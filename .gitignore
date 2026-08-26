@@ -1,0 +1,26 @@
+# Build folders
+build/
+build-*/
+bin/
+out/
+CMakeFiles/
+CMakeCache.txt
+
+# Visual Studio / MSVC
+.vs/
+*.sln
+*.vcxproj*
+*.dir/
+Debug/
+Release/
+x64/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini

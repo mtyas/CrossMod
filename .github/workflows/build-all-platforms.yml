@@ -1,0 +1,103 @@
+name: Build MidiFlux (Windows, macOS, Linux)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: MidiFlux-Windows
+            build_dir: build
+            cmake_flags: ""
+          - os: macos-14
+            artifact_name: MidiFlux-macOS-Universal
+            build_dir: build
+            cmake_flags: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"'
+          - os: ubuntu-22.04
+            artifact_name: MidiFlux-Linux-x64
+            build_dir: build
+            cmake_flags: ""
+
+    steps:
+      - name: Checkout Code with Submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -B ${{ matrix.build_dir }} \
+            -DCMAKE_BUILD_TYPE=Release \
+            ${{ matrix.cmake_flags }}
+
+      - name: Build Plugins & Standalone
+        run: |
+          cmake --build ${{ matrix.build_dir }} --config Release --parallel
+
+      - name: Run Verification Tests
+        run: |
+          ${{ matrix.build_dir }}/MidiFluxTests || ${{ matrix.build_dir }}/Release/MidiFluxTests.exe
+
+      - name: Stage Artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts-windows
+          Copy-Item -Recurse -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-windows/
+          Copy-Item -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-windows/
+          Copy-Item -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux.exe" artifacts-windows/
+
+      - name: Stage Artifacts (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p artifacts-macos
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-macos/ 2>/dev/null || true
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-macos/ 2>/dev/null || true
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/AU/MidiFlux.component" artifacts-macos/ 2>/dev/null || true
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux.app" artifacts-macos/ 2>/dev/null || true
+
+      - name: Stage Artifacts (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p artifacts-linux
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-linux/ 2>/dev/null || true
+          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-linux/ 2>/dev/null || true
+          cp "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux" artifacts-linux/ 2>/dev/null || true
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            artifacts-windows
+            artifacts-macos
+            artifacts-linux
