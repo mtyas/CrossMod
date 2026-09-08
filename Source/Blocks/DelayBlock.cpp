@@ -12,6 +12,7 @@ void DelayBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    activeEchoes.reserve(256);
 }
 
 void DelayBlock::reset()

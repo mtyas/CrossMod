@@ -12,6 +12,7 @@ void RatchetBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    queuedNotes.reserve(128);
 }
 
 void RatchetBlock::reset()

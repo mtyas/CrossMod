@@ -13,6 +13,8 @@ void EuclideanBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    heldNotes.reserve(32);
+    activeNotes.reserve(64);
 }
 
 void EuclideanBlock::reset()

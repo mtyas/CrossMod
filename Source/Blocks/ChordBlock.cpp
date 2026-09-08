@@ -13,6 +13,8 @@ void ChordBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    activeChords.reserve(64);
+    delayedStrumNotes.reserve(64);
 }
 
 void ChordBlock::reset()

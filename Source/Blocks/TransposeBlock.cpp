@@ -11,6 +11,7 @@ TransposeBlock::TransposeBlock()
 void TransposeBlock::prepare(double, int)
 {
     reset();
+    noteMap.reserve(64);
 }
 
 void TransposeBlock::reset()

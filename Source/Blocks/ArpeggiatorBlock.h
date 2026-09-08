@@ -79,9 +79,12 @@ private:
     };
     std::vector<ActiveArpNote> activeNotes;
 
+    mutable std::vector<int> cachedNotePool;
+    mutable bool notePoolDirty = true;
+
     double getDivisionInQuarterNotes(int rateIndex) const;
     bool isEuclideanHit(int step, int pulses, int steps) const;
-    std::vector<int> buildNotePool() const;
+    const std::vector<int>& getNotePool() const;
     void silenceActiveNotes(juce::MidiBuffer& outputMidi);
 };
 

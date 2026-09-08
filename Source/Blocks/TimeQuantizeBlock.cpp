@@ -14,6 +14,8 @@ void TimeQuantizeBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    delayedQueue.reserve(128);
+    noteDelayMap.reserve(128);
 }
 
 void TimeQuantizeBlock::reset()

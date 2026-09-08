@@ -43,6 +43,7 @@ void MidiFluxAudioProcessor::changeProgramName(int, const juce::String&) {}
 
 void MidiFluxAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    virtualMidiQueue.ensureSize(512);
     chain.prepare(sampleRate, samplesPerBlock);
 }
 
@@ -80,8 +81,8 @@ void MidiFluxAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
 
     // Pull any virtual keyboard messages
     {
-        std::lock_guard<std::mutex> lock(virtualMidiMutex);
-        if (!virtualMidiQueue.isEmpty())
+        std::unique_lock<std::mutex> lock(virtualMidiMutex, std::try_to_lock);
+        if (lock.owns_lock() && !virtualMidiQueue.isEmpty())
         {
             midiMessages.addEvents(virtualMidiQueue, 0, -1, 0);
             virtualMidiQueue.clear();

@@ -17,7 +17,7 @@ public:
     juce::String getCategory() const override { return "Utility"; }
     juce::Colour getAccentColor() const override { return juce::Colour(0xffec4899); } // Magenta
 
-    void prepare(double sampleRate, int maxSamplesPerBlock) override { (void)sampleRate; (void)maxSamplesPerBlock; reset(); }
+    void prepare(double sampleRate, int maxSamplesPerBlock) override { (void)sampleRate; (void)maxSamplesPerBlock; reset(); noteMap.reserve(64); }
     void reset() override;
     void allNotesOff(juce::MidiBuffer& outBuffer) override;
 

@@ -100,6 +100,11 @@ private:
     std::atomic<int> activityWritePos{ 0 };
     int activityReadPos = 0;
 
+    // Pre-allocated scratch buffers to guarantee zero heap allocations on audio thread
+    juce::MidiBuffer mainInputBuffer;
+    juce::MidiBuffer currentChainBuffer;
+    juce::MidiBuffer nextBlockBuffer;
+
     void pushActivityEvent(int note, uint8_t vel, bool isNoteOn, bool isOutput);
 };
 

@@ -11,6 +11,7 @@ HarmonizerBlock::HarmonizerBlock()
 void HarmonizerBlock::prepare(double, int)
 {
     reset();
+    activeVoices.reserve(64);
 }
 
 void HarmonizerBlock::reset()

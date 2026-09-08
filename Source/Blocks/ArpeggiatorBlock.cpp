@@ -12,6 +12,10 @@ ArpeggiatorBlock::ArpeggiatorBlock()
 void ArpeggiatorBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
+    physicalNotes.reserve(32);
+    arpPool.reserve(32);
+    activeNotes.reserve(64);
+    cachedNotePool.reserve(128);
     reset();
 }
 
@@ -26,6 +30,8 @@ void ArpeggiatorBlock::reset()
     physicalNotes.clear();
     arpPool.clear();
     activeNotes.clear();
+    cachedNotePool.clear();
+    notePoolDirty = true;
 }
 
 void ArpeggiatorBlock::allNotesOff(juce::MidiBuffer& outBuffer)
@@ -35,6 +41,8 @@ void ArpeggiatorBlock::allNotesOff(juce::MidiBuffer& outBuffer)
     arpPool.clear();
     latched = false;
     sustainPedalDown = false;
+    cachedNotePool.clear();
+    notePoolDirty = true;
     MidiBlock::allNotesOff(outBuffer);
 }
 
@@ -99,7 +107,10 @@ void ArpeggiatorBlock::setParameterValue(int index, float value)
     {
         case 0: arpMode = juce::jlimit(0.0f, 7.0f, value); break;
         case 1: arpRate = juce::jlimit(0.0f, 7.0f, value); break;
-        case 2: octaveRange = juce::jlimit(1.0f, 4.0f, value); break;
+        case 2:
+            octaveRange = juce::jlimit(1.0f, 4.0f, value);
+            notePoolDirty = true;
+            break;
         case 3: gateLength = juce::jlimit(0.1f, 1.5f, value); break;
         case 4: swing = juce::jlimit(0.0f, 0.75f, value); break;
         case 5: euclideanPulses = juce::jlimit(1.0f, 16.0f, value); break;
@@ -113,12 +124,12 @@ void ArpeggiatorBlock::setParameterValue(int index, float value)
             if (prev > 0.5f && holdMode < 0.5f && !sustainPedalDown)
             {
                 latched = false;
-                // Immediately purge notes that aren't physically held
                 arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
                     return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
                         return pn.noteNumber == an.noteNumber;
                     });
                 }), arpPool.end());
+                notePoolDirty = true;
             }
             break;
         }
@@ -149,29 +160,38 @@ bool ArpeggiatorBlock::isEuclideanHit(int step, int pulses, int steps) const
     return ((step * pulses) % steps) < pulses;
 }
 
-std::vector<int> ArpeggiatorBlock::buildNotePool() const
+const std::vector<int>& ArpeggiatorBlock::getNotePool() const
 {
-    std::vector<int> pool;
+    if (!notePoolDirty)
+        return cachedNotePool;
+
+    cachedNotePool.clear();
     if (arpPool.empty())
-        return pool;
+    {
+        notePoolDirty = false;
+        return cachedNotePool;
+    }
 
     std::vector<int> baseNotes;
+    baseNotes.reserve(arpPool.size());
     for (const auto& hn : arpPool)
         baseNotes.push_back(hn.noteNumber);
 
     std::sort(baseNotes.begin(), baseNotes.end());
 
     int octCount = static_cast<int>(std::round(octaveRange));
+    cachedNotePool.reserve(baseNotes.size() * octCount);
     for (int oct = 0; oct < octCount; ++oct)
     {
         for (int note : baseNotes)
         {
             int n = note + oct * 12;
             if (n <= 127)
-                pool.push_back(n);
+                cachedNotePool.push_back(n);
         }
     }
-    return pool;
+    notePoolDirty = false;
+    return cachedNotePool;
 }
 
 void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
@@ -201,6 +221,7 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
             if (!arpPool.empty())
             {
                 arpPool.clear();
+                notePoolDirty = true;
                 silenceActiveNotes(outputMidi);
                 phaseInQuarterNotes = 0.0;
                 currentStepIndex = 0;
@@ -208,11 +229,14 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
         }
         else
         {
+            size_t oldSz = arpPool.size();
             arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
                 return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
                     return pn.noteNumber == an.noteNumber;
                 });
             }), arpPool.end());
+            if (arpPool.size() != oldSz)
+                notePoolDirty = true;
         }
     }
 
@@ -230,6 +254,7 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
             silenceActiveNotes(outputMidi);
             physicalNotes.clear();
             arpPool.clear();
+            notePoolDirty = true;
             latched = false;
             sustainPedalDown = false;
             continue;
@@ -243,11 +268,14 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
             {
                 if (!isHold)
                 {
+                    size_t oldSz = arpPool.size();
                     arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
                         return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
                             return pn.noteNumber == an.noteNumber;
                         });
                     }), arpPool.end());
+                    if (arpPool.size() != oldSz)
+                        notePoolDirty = true;
                 }
             }
             sustainPedalDown = newSustain;
@@ -284,7 +312,10 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
                     return hn.noteNumber == note;
                 });
                 if (itA == arpPool.end())
+                {
                     arpPool.push_back({ ch, note, msg.getVelocity() });
+                    notePoolDirty = true;
+                }
                 else
                     itA->velocity = msg.getVelocity();
             }
@@ -295,7 +326,10 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
                     return hn.noteNumber == note;
                 });
                 if (itA == arpPool.end())
+                {
                     arpPool.push_back({ ch, note, msg.getVelocity() });
+                    notePoolDirty = true;
+                }
                 else
                     itA->velocity = msg.getVelocity();
             }
@@ -318,18 +352,24 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
                 {
                     // While keys are still actively held (e.g. legato chord change or lifting individual fingers):
                     // Remove released note so old chord notes don't stick into new chords!
+                    size_t oldSz = arpPool.size();
                     arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
                         return hn.noteNumber == note;
                     }), arpPool.end());
+                    if (arpPool.size() != oldSz)
+                        notePoolDirty = true;
                 }
             }
             else
             {
                 if (!sustainPedalDown)
                 {
+                    size_t oldSz = arpPool.size();
                     arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
                         return hn.noteNumber == note;
                     }), arpPool.end());
+                    if (arpPool.size() != oldSz)
+                        notePoolDirty = true;
                 }
             }
         }
@@ -381,7 +421,7 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
 
     // Sample-accurate step trigger loop
     double quartersPerSample = (ctx.bpm > 0.0 ? (ctx.bpm / 60.0) : 2.0) / currentSampleRate;
-    auto notePool = buildNotePool();
+    const auto& notePool = getNotePool();
     if (notePool.empty())
         return;
 

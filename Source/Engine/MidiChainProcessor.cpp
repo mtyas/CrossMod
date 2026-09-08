@@ -17,6 +17,10 @@ void MidiChainProcessor::prepare(double sampleRate, int maxSamplesPerBlock)
     currentSampleRate = sampleRate;
     currentBlockSize = maxSamplesPerBlock;
 
+    mainInputBuffer.ensureSize(2048);
+    currentChainBuffer.ensureSize(2048);
+    nextBlockBuffer.ensureSize(2048);
+
     for (auto& block : blocks)
     {
         if (block)
@@ -87,29 +91,26 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
     if (masterBypassed.load(std::memory_order_relaxed))
         return;
 
-    {
-        std::unique_lock<std::recursive_mutex> lock(chainMutex, std::try_to_lock);
-        if (lock.owns_lock() && scaleProgression.isEnabled())
-        {
-            auto pb = scaleProgression.getPlaybackState(ctx.ppqPosition, ctx.timeSigNumerator, ctx.timeSigDenominator);
-            pb.isPlaying = ctx.isPlaying;
-            lastPlaybackState = pb;
-
-            ctx.rootKey = pb.activeRootKey;
-            ctx.scaleType = pb.activeScaleType;
-        }
-        else
-        {
-            ctx.rootKey = globalRootKey.load(std::memory_order_relaxed);
-            ctx.scaleType = globalScaleType.load(std::memory_order_relaxed);
-        }
-    }
-
     std::unique_lock<std::recursive_mutex> lock(chainMutex, std::try_to_lock);
     if (!lock.owns_lock())
     {
         // If UI is currently modifying the chain, pass MIDI safely without blocking audio thread
         return;
+    }
+
+    if (scaleProgression.isEnabled())
+    {
+        auto pb = scaleProgression.getPlaybackState(ctx.ppqPosition, ctx.timeSigNumerator, ctx.timeSigDenominator);
+        pb.isPlaying = ctx.isPlaying;
+        lastPlaybackState = pb;
+
+        ctx.rootKey = pb.activeRootKey;
+        ctx.scaleType = pb.activeScaleType;
+    }
+    else
+    {
+        ctx.rootKey = globalRootKey.load(std::memory_order_relaxed);
+        ctx.scaleType = globalScaleType.load(std::memory_order_relaxed);
     }
 
     // Check if any block is soloed
@@ -123,9 +124,11 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
         }
     }
 
-    juce::MidiBuffer mainInput = midiBuffer;
-    juce::MidiBuffer currentBuffer = midiBuffer;
-    juce::MidiBuffer nextBuffer;
+    mainInputBuffer.clear();
+    mainInputBuffer.addEvents(midiBuffer, 0, -1, 0);
+
+    currentChainBuffer.clear();
+    currentChainBuffer.addEvents(midiBuffer, 0, -1, 0);
 
     for (size_t i = 0; i < blocks.size(); ++i)
     {
@@ -141,28 +144,28 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
 
         if (block->isBypassed())
         {
-            block->flushIfNewlyBypassed(currentBuffer);
+            block->flushIfNewlyBypassed(currentChainBuffer);
             continue;
         }
-        block->flushIfNewlyBypassed(currentBuffer);
+        block->flushIfNewlyBypassed(currentChainBuffer);
 
-        nextBuffer.clear();
+        nextBlockBuffer.clear();
 
         if (block->getRoutingMode() == RoutingMode::Parallel && i > 0)
         {
             // Parallel routing: processes raw DAW input directly, output merges into chain
-            block->processBlock(mainInput, nextBuffer, ctx);
-            currentBuffer.addEvents(nextBuffer, 0, -1, 0);
+            block->processBlock(mainInputBuffer, nextBlockBuffer, ctx);
+            currentChainBuffer.addEvents(nextBlockBuffer, 0, -1, 0);
         }
         else
         {
             // Series routing: processes output of previous module
-            block->processBlock(currentBuffer, nextBuffer, ctx);
-            currentBuffer.swapWith(nextBuffer);
+            block->processBlock(currentChainBuffer, nextBlockBuffer, ctx);
+            currentChainBuffer.swapWith(nextBlockBuffer);
         }
     }
 
-    midiBuffer.swapWith(currentBuffer);
+    midiBuffer.swapWith(currentChainBuffer);
 
     // Log outgoing MIDI for visualizer
     for (const auto meta : midiBuffer)

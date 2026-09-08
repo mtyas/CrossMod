@@ -12,6 +12,7 @@ void MutatorBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    pitchMap.reserve(64);
 }
 
 void MutatorBlock::reset()

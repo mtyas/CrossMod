@@ -12,6 +12,9 @@ void QuantizerBlock::prepare(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     reset();
+    noteMap.reserve(64);
+    delayedQueue.reserve(128);
+    noteDelayMap.reserve(128);
 }
 
 void QuantizerBlock::reset()
