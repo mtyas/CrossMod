@@ -343,6 +343,88 @@ void testArpeggiatorHoldAndSustain()
         }
     }
 
+    // 4. Test Hold Mode (Latch) & Chord Replacement & Turning Hold OFF
+    arpBlock->setParameterValue(9, 1.0f); // Hold ON
+
+    // Play chord C4 (60) + E4 (64)
+    in.clear();
+    out.clear();
+    in.addEvent(juce::MidiMessage::noteOn(1, 60, (uint8_t)100), 0);
+    in.addEvent(juce::MidiMessage::noteOn(1, 64, (uint8_t)100), 0);
+    arpBlock->processBlock(in, out, ctx);
+
+    // Release both keys (NoteOff)
+    in.clear();
+    out.clear();
+    in.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
+    in.addEvent(juce::MidiMessage::noteOff(1, 64), 0);
+    arpBlock->processBlock(in, out, ctx);
+
+    // Because Hold is ON, it MUST keep playing 60 and 64!
+    bool holdPlaying = false;
+    for (int b = 0; b < 25; ++b)
+    {
+        in.clear();
+        out.clear();
+        arpBlock->processBlock(in, out, ctx);
+        for (const auto m : out)
+        {
+            if (m.getMessage().isNoteOn())
+            {
+                holdPlaying = true;
+                int n = m.getMessage().getNoteNumber();
+                assert(n == 60 || n == 64);
+            }
+        }
+    }
+    assert(holdPlaying);
+
+    // Play a NEW chord: G4 (67) + B4 (71)
+    in.clear();
+    out.clear();
+    in.addEvent(juce::MidiMessage::noteOn(1, 67, (uint8_t)100), 0);
+    in.addEvent(juce::MidiMessage::noteOn(1, 71, (uint8_t)100), 0);
+    arpBlock->processBlock(in, out, ctx);
+
+    // Release both keys
+    in.clear();
+    out.clear();
+    in.addEvent(juce::MidiMessage::noteOff(1, 67), 0);
+    in.addEvent(juce::MidiMessage::noteOff(1, 71), 0);
+    arpBlock->processBlock(in, out, ctx);
+
+    // Old notes 60 and 64 must NOT stick! Only 67 and 71 should play
+    bool newChordPlaying = false;
+    for (int b = 0; b < 25; ++b)
+    {
+        in.clear();
+        out.clear();
+        arpBlock->processBlock(in, out, ctx);
+        for (const auto m : out)
+        {
+            if (m.getMessage().isNoteOn())
+            {
+                newChordPlaying = true;
+                int n = m.getMessage().getNoteNumber();
+                assert(n == 67 || n == 71); // Crucial: 60 and 64 were discarded!
+            }
+        }
+    }
+    assert(newChordPlaying);
+
+    // Turn Hold OFF! It must immediately stop playing and never stick!
+    arpBlock->setParameterValue(9, 0.0f); // Hold OFF
+    for (int b = 0; b < 25; ++b)
+    {
+        in.clear();
+        out.clear();
+        arpBlock->processBlock(in, out, ctx);
+        for (const auto m : out)
+        {
+            assert(!m.getMessage().isNoteOn());
+        }
+    }
+
     std::cout << "  -> Arpeggiator Hold & Sustain test passed!" << std::endl;
 }
 

@@ -199,7 +199,7 @@ void BlockCardComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
-    if (e.y <= 38)
+    if (e.eventComponent == this && e.y <= 38)
     {
         setMouseCursor(juce::MouseCursor::DraggingHandCursor);
     }
@@ -207,7 +207,12 @@ void BlockCardComponent::mouseDown(const juce::MouseEvent& e)
 
 void BlockCardComponent::mouseDrag(const juce::MouseEvent& e)
 {
-    if (e.y <= 42 && e.getDistanceFromDragStart() > 5)
+    // Crucial fix: Only initiate card reordering if the drag started on this card's header,
+    // never when tweaking rotary knobs, sliders, or dropdowns!
+    if (e.eventComponent != this)
+        return;
+
+    if (e.getMouseDownY() <= 38 && e.getDistanceFromDragStart() > 5)
     {
         if (auto* dragContainer = juce::DragAndDropContainer::findParentDragContainerFor(this))
         {
@@ -218,6 +223,12 @@ void BlockCardComponent::mouseDrag(const juce::MouseEvent& e)
             }
         }
     }
+}
+
+void BlockCardComponent::mouseUp(const juce::MouseEvent& e)
+{
+    if (e.eventComponent == this)
+        setMouseCursor(juce::MouseCursor::NormalCursor);
 }
 
 void BlockCardComponent::updateControlsFromBlock()

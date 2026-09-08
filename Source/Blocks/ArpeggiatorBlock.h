@@ -31,7 +31,7 @@ public:
     void setParameterValue(int index, float value) override;
 
     bool isHoldActive() const { return holdMode > 0.5f; }
-    void setHoldActive(bool h) { holdMode = h ? 1.0f : 0.0f; }
+    void setHoldActive(bool h) { setParameterValue(9, h ? 1.0f : 0.0f); }
 
     bool requiresDawPlayback() const override { return syncMode > 0.5f; }
     juce::String getStatusDescription() const override;
@@ -57,6 +57,7 @@ private:
     int walkIndex = 0;
     bool upDownDirection = true; // true = up, false = down
     bool sustainPedalDown = false;
+    bool latched = false;
 
     struct HeldNote
     {

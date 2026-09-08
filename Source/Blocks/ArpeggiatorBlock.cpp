@@ -22,6 +22,7 @@ void ArpeggiatorBlock::reset()
     walkIndex = 0;
     upDownDirection = true;
     sustainPedalDown = false;
+    latched = false;
     physicalNotes.clear();
     arpPool.clear();
     activeNotes.clear();
@@ -32,15 +33,20 @@ void ArpeggiatorBlock::allNotesOff(juce::MidiBuffer& outBuffer)
     silenceActiveNotes(outBuffer);
     physicalNotes.clear();
     arpPool.clear();
+    latched = false;
     sustainPedalDown = false;
     MidiBlock::allNotesOff(outBuffer);
 }
 
 void ArpeggiatorBlock::silenceActiveNotes(juce::MidiBuffer& outBuffer)
 {
+    std::set<std::pair<int, int>> sentNoteOffs;
     for (const auto& an : activeNotes)
     {
-        outBuffer.addEvent(juce::MidiMessage::noteOff(an.channel, an.noteNumber), 0);
+        if (sentNoteOffs.insert({ an.channel, an.noteNumber }).second)
+        {
+            outBuffer.addEvent(juce::MidiMessage::noteOff(an.channel, an.noteNumber), 0);
+        }
     }
     activeNotes.clear();
 }
@@ -106,10 +112,11 @@ void ArpeggiatorBlock::setParameterValue(int index, float value)
             holdMode = juce::jlimit(0.0f, 1.0f, value);
             if (prev > 0.5f && holdMode < 0.5f && !sustainPedalDown)
             {
-                // Turned off hold: purge notes that aren't physically held
+                latched = false;
+                // Immediately purge notes that aren't physically held
                 arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
                     return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
-                        return pn.channel == an.channel && pn.noteNumber == an.noteNumber;
+                        return pn.noteNumber == an.noteNumber;
                     });
                 }), arpPool.end());
             }
@@ -174,12 +181,40 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
     if (isBypassed())
     {
         silenceActiveNotes(outputMidi);
+        physicalNotes.clear();
+        arpPool.clear();
+        latched = false;
         outputMidi.addEvents(inputMidi, 0, -1, 0);
         return;
     }
 
     bool isHold = (holdMode > 0.5f);
     bool requireTransport = (syncMode > 0.5f);
+
+    // If Hold and Sustain are both OFF: synchronize arpPool with physicalNotes
+    // (Ensures that turning Hold off immediately stops notes if no keys are held!)
+    if (!isHold && !sustainPedalDown)
+    {
+        latched = false;
+        if (physicalNotes.empty())
+        {
+            if (!arpPool.empty())
+            {
+                arpPool.clear();
+                silenceActiveNotes(outputMidi);
+                phaseInQuarterNotes = 0.0;
+                currentStepIndex = 0;
+            }
+        }
+        else
+        {
+            arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
+                return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
+                    return pn.noteNumber == an.noteNumber;
+                });
+            }), arpPool.end());
+        }
+    }
 
     // 1. Process incoming MIDI messages
     for (const auto metadata : inputMidi)
@@ -195,6 +230,7 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
             silenceActiveNotes(outputMidi);
             physicalNotes.clear();
             arpPool.clear();
+            latched = false;
             sustainPedalDown = false;
             continue;
         }
@@ -207,10 +243,9 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
             {
                 if (!isHold)
                 {
-                    // Remove notes from arpPool that are not physically held
                     arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [this](const HeldNote& an) {
                         return std::none_of(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& pn) {
-                            return pn.channel == an.channel && pn.noteNumber == an.noteNumber;
+                            return pn.noteNumber == an.noteNumber;
                         });
                     }), arpPool.end());
                 }
@@ -222,50 +257,80 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
 
         if (msg.isNoteOn())
         {
-            // Record in physical notes
+            // Update or add to physicalNotes
             auto itP = std::find_if(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& hn) {
-                return hn.channel == ch && hn.noteNumber == note;
+                return hn.noteNumber == note;
             });
             if (itP == physicalNotes.end())
-            {
-                // If Hold is active and this is the start of a brand new chord (no other keys held)
-                if (isHold && physicalNotes.empty())
-                {
-                    arpPool.clear();
-                }
                 physicalNotes.push_back({ ch, note, msg.getVelocity() });
-            }
             else
             {
                 itP->velocity = msg.getVelocity();
+                itP->channel = ch;
             }
 
-            // Record in arpPool
-            auto itA = std::find_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
-                return hn.channel == ch && hn.noteNumber == note;
-            });
-            if (itA == arpPool.end())
+            if (isHold)
             {
-                arpPool.push_back({ ch, note, msg.getVelocity() });
+                // If previous chord was latched (user had lifted all keys),
+                // this new NoteOn begins a fresh chord!
+                if (latched)
+                {
+                    arpPool.clear();
+                    silenceActiveNotes(outputMidi);
+                    latched = false;
+                }
+
+                auto itA = std::find_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
+                    return hn.noteNumber == note;
+                });
+                if (itA == arpPool.end())
+                    arpPool.push_back({ ch, note, msg.getVelocity() });
+                else
+                    itA->velocity = msg.getVelocity();
             }
             else
             {
-                itA->velocity = msg.getVelocity();
+                latched = false;
+                auto itA = std::find_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
+                    return hn.noteNumber == note;
+                });
+                if (itA == arpPool.end())
+                    arpPool.push_back({ ch, note, msg.getVelocity() });
+                else
+                    itA->velocity = msg.getVelocity();
             }
         }
         else if (msg.isNoteOff())
         {
-            // Remove from physical notes
+            // Remove from physical notes (match noteNumber)
             physicalNotes.erase(std::remove_if(physicalNotes.begin(), physicalNotes.end(), [&](const HeldNote& hn) {
-                return hn.channel == ch && hn.noteNumber == note;
+                return hn.noteNumber == note;
             }), physicalNotes.end());
 
-            // If neither Hold nor Sustain Pedal is active, remove from arpPool immediately
-            if (!isHold && !sustainPedalDown)
+            if (isHold)
             {
-                arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
-                    return hn.channel == ch && hn.noteNumber == note;
-                }), arpPool.end());
+                if (physicalNotes.empty())
+                {
+                    // All keys are now released -> Latch the current chord!
+                    latched = true;
+                }
+                else if (!latched)
+                {
+                    // While keys are still actively held (e.g. legato chord change or lifting individual fingers):
+                    // Remove released note so old chord notes don't stick into new chords!
+                    arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
+                        return hn.noteNumber == note;
+                    }), arpPool.end());
+                }
+            }
+            else
+            {
+                if (!sustainPedalDown)
+                {
+                    arpPool.erase(std::remove_if(arpPool.begin(), arpPool.end(), [&](const HeldNote& hn) {
+                        return hn.noteNumber == note;
+                    }), arpPool.end());
+                }
             }
         }
         else

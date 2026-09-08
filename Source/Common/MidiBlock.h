@@ -72,6 +72,16 @@ public:
     bool isBypassed() const { return bypassed.load(std::memory_order_relaxed); }
     void setBypassed(bool b) { bypassed.store(b, std::memory_order_relaxed); }
 
+    void flushIfNewlyBypassed(juce::MidiBuffer& outBuffer)
+    {
+        bool b = isBypassed();
+        if (b && !wasBypassedLast)
+        {
+            allNotesOff(outBuffer);
+        }
+        wasBypassedLast = b;
+    }
+
     bool isSoloed() const { return soloed.load(std::memory_order_relaxed); }
     void setSoloed(bool s) { soloed.store(s, std::memory_order_relaxed); }
 
@@ -187,6 +197,7 @@ public:
 
 protected:
     std::atomic<bool> bypassed{ false };
+    bool wasBypassedLast = false;
     std::atomic<bool> soloed{ false };
     std::atomic<RoutingMode> routingMode{ RoutingMode::Series };
     std::atomic<int> activityCount{ 0 };

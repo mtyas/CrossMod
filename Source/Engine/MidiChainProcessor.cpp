@@ -141,8 +141,10 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
 
         if (block->isBypassed())
         {
+            block->flushIfNewlyBypassed(currentBuffer);
             continue;
         }
+        block->flushIfNewlyBypassed(currentBuffer);
 
         nextBuffer.clear();
 

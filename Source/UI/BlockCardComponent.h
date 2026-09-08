@@ -20,6 +20,7 @@ public:
 
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
 
     std::function<void(int)> onMoveLeft;
     std::function<void(int)> onMoveRight;
