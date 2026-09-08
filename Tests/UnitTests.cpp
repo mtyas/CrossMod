@@ -400,6 +400,475 @@ void testStrummingAndTiming()
     std::cout << "  -> Strumming & Timing delayed queue tests passed!" << std::endl;
 }
 
+void testRandomizeRackAndVisualFeedback()
+{
+    std::cout << "[TEST] Running Randomize Rack, DAW Transport & Visual Status tests..." << std::endl;
+
+    MidiChainProcessor chain;
+    chain.prepare(44100.0, 512);
+
+    // Test DAW playing flag propagation
+    assert(!chain.isDawPlaying());
+    chain.setIsDawPlaying(true);
+    assert(chain.isDawPlaying());
+    chain.setIsDawPlaying(false);
+    assert(!chain.isDawPlaying());
+
+    // Test randomizeRack(true) with module selection
+    chain.randomizeRack(true);
+    assert(chain.getNumBlocks() >= 1);
+    assert(chain.getNumBlocks() <= 6);
+
+    // Verify all blocks have valid status descriptions
+    for (int i = 0; i < chain.getNumBlocks(); ++i)
+    {
+        auto* blk = chain.getBlock(i);
+        assert(blk != nullptr);
+        juce::String desc = blk->getStatusDescription();
+        assert(!desc.isEmpty());
+    }
+
+    // Verify diverse selections across multiple rolls without duplicate types in a single rack
+    std::set<int> uniqueCounts;
+    std::set<juce::String> uniqueFirstModules;
+    for (int roll = 0; roll < 15; ++roll)
+    {
+        chain.randomizeRack(true);
+        int num = chain.getNumBlocks();
+        assert(num >= 1 && num <= 6);
+        uniqueCounts.insert(num);
+
+        std::set<juce::String> typesInRack;
+        for (int i = 0; i < num; ++i)
+        {
+            auto* b = chain.getBlock(i);
+            assert(b != nullptr);
+            // Verify no duplicate types within the same generated rack
+            assert(typesInRack.count(b->getTypeId()) == 0);
+            typesInRack.insert(b->getTypeId());
+        }
+        if (num > 0)
+            uniqueFirstModules.insert(chain.getBlock(0)->getTypeId());
+    }
+    // With 15 rolls, we must have observed multiple distinct rack sizes and starting modules
+    assert(uniqueCounts.size() >= 2);
+    assert(uniqueFirstModules.size() >= 2);
+
+    // Check DAW playback requirement specifics
+    auto arp = MidiBlockFactory::createBlock("arpeggiator");
+    arp->setParameterValue(3, 1.0f); // Sync On
+    assert(arp->requiresDawPlayback() == true);
+    arp->setParameterValue(3, 0.0f); // Sync Off (Free rate)
+    assert(arp->requiresDawPlayback() == false);
+
+    auto euc = MidiBlockFactory::createBlock("euclidean");
+    assert(euc->requiresDawPlayback() == true);
+
+    auto tq = MidiBlockFactory::createBlock("time_quantize");
+    tq->setParameterValue(1, 0.8f); // Snap strength
+    assert(tq->requiresDawPlayback() == true);
+    tq->setParameterValue(1, 0.0f); // Snap strength off
+    assert(tq->requiresDawPlayback() == false);
+
+    std::cout << "  -> Randomize Rack, DAW Transport & Visual Status tests passed!" << std::endl;
+}
+
+void testScaleProgressionSequencer()
+{
+    std::cout << "[TEST] Running Scale Progression Sequencer tests..." << std::endl;
+
+    ScaleProgression prog;
+    assert(prog.getNumBlocks() == 4);
+    assert(std::abs(prog.getTotalBars() - 8.0f) < 0.001f);
+
+    // In 4/4: 1 bar = 4.0 PPQ. 2 bars = 8.0 PPQ.
+    // Block 0: C Major, 2 bars (0.0 to 8.0 PPQ)
+    // Block 1: G Major, 2 bars (8.0 to 16.0 PPQ)
+    // Block 2: A Minor, 2 bars (16.0 to 24.0 PPQ)
+    // Block 3: F Major, 2 bars (24.0 to 32.0 PPQ)
+    auto st0 = prog.getPlaybackState(0.0, 4, 4);
+    assert(st0.activeBlockIndex == 0);
+    assert(st0.activeRootKey == 0); // C
+    assert(st0.activeScaleType == Scale_Major);
+    assert(std::abs(st0.blockProgress - 0.0f) < 0.01f);
+
+    auto st1 = prog.getPlaybackState(4.0, 4, 4); // halfway through Block 0
+    assert(st1.activeBlockIndex == 0);
+    assert(std::abs(st1.blockProgress - 0.5f) < 0.01f);
+
+    auto st2 = prog.getPlaybackState(8.0, 4, 4); // start of Block 1
+    assert(st2.activeBlockIndex == 1);
+    assert(st2.activeRootKey == 7); // G
+    assert(std::abs(st2.blockProgress - 0.0f) < 0.01f);
+
+    auto st3 = prog.getPlaybackState(16.0, 4, 4); // start of Block 2
+    assert(st3.activeBlockIndex == 2);
+    assert(st3.activeRootKey == 9); // A
+    assert(st3.activeScaleType == Scale_NaturalMinor);
+
+    auto st4 = prog.getPlaybackState(24.0, 4, 4); // start of Block 3
+    assert(st4.activeBlockIndex == 3);
+    assert(st4.activeRootKey == 5); // F
+
+    // Test loop wrapping at 32.0 PPQ -> back to Block 0
+    auto stLoop = prog.getPlaybackState(32.0, 4, 4);
+    assert(stLoop.activeBlockIndex == 0);
+    assert(stLoop.activeRootKey == 0);
+
+    // Test 1/2 bar duration (0.5 bars in 4/4 = 2.0 PPQ)
+    prog.clear();
+    prog.addBlock({ 2, Scale_Dorian, 0.5f, "1/2 Bar" });
+    auto stHalf = prog.getPlaybackState(1.0, 4, 4);
+    assert(stHalf.activeBlockIndex == 0);
+    assert(std::abs(stHalf.blockProgress - 0.5f) < 0.02f);
+
+    // Test 16 bars duration (16.0 bars in 4/4 = 64.0 PPQ)
+    prog.clear();
+    prog.addBlock({ 0, Scale_Major, 16.0f, "16 Bars" });
+    auto st16 = prog.getPlaybackState(32.0, 4, 4);
+    assert(st16.activeBlockIndex == 0);
+    assert(std::abs(st16.blockProgress - 0.5f) < 0.02f);
+
+    // Test 3/4 time signature: beatsPerBar = 3.0 PPQ
+    prog.clear();
+    prog.addBlock({ 0, Scale_Major, 2.0f, "2 Bars in 3/4" }); // 2 bars * 3 beats = 6.0 PPQ
+    auto st34 = prog.getPlaybackState(3.0, 3, 4);
+    assert(st34.activeBlockIndex == 0);
+    assert(std::abs(st34.blockProgress - 0.5f) < 0.02f);
+
+    // Test non-loop mode clamping to last block
+    prog.setLoop(false);
+    auto stNoLoop = prog.getPlaybackState(500.0, 4, 4);
+    assert(stNoLoop.activeBlockIndex == 0);
+    assert(stNoLoop.blockProgress >= 0.99f);
+
+    // Test ValueTree serialization & deserialization
+    prog.loadPresetProgression(3); // 12-Bar Blues in E
+    assert(prog.getNumBlocks() == 6);
+    assert(std::abs(prog.getTotalBars() - 12.0f) < 0.01f);
+
+    auto vt = prog.getState();
+    ScaleProgression restoredProg;
+    restoredProg.setState(vt);
+    assert(restoredProg.getNumBlocks() == 6);
+    assert(std::abs(restoredProg.getTotalBars() - 12.0f) < 0.01f);
+    assert(restoredProg.getBlock(0).rootKey == 4); // E
+
+    std::cout << "  -> Scale Progression Sequencer tests passed!" << std::endl;
+}
+
+void testEditablePresets()
+{
+    std::cout << "[TEST] Running Editable Presets tests..." << std::endl;
+
+    MidiChainProcessor chain;
+    auto& presets = PresetManager::getPresets();
+    int initialCount = static_cast<int>(presets.size());
+    assert(initialCount >= 7);
+
+    // 1. Add new custom preset
+    juce::ValueTree customState("MidiFluxState");
+    customState.setProperty("rootKey", 7, nullptr); // G
+    customState.setProperty("scaleType", 1, nullptr); // Minor
+    PresetManager::addPreset("User Mega Groove", customState);
+    assert(static_cast<int>(PresetManager::getPresets().size()) == initialCount + 1);
+    assert(PresetManager::getPresets().back().name == "User Mega Groove");
+
+    // 2. Overwrite / Save current preset
+    int newIdx = static_cast<int>(PresetManager::getPresets().size()) - 1;
+    juce::ValueTree modState("MidiFluxState");
+    modState.setProperty("rootKey", 2, nullptr); // D
+    PresetManager::saveCurrentPreset(newIdx, modState);
+    PresetManager::applyPreset(chain, newIdx);
+    assert(chain.getGlobalRootKey() == 2);
+
+    // 3. Delete preset
+    PresetManager::deletePreset(newIdx);
+    assert(static_cast<int>(PresetManager::getPresets().size()) == initialCount);
+
+    // 4. Factory reset
+    PresetManager::resetToFactoryDefaults();
+    assert(static_cast<int>(PresetManager::getPresets().size()) >= 7);
+
+    std::cout << "  -> Editable Presets tests passed!" << std::endl;
+}
+
+void testProgressionPresetSavingAndFileIO()
+{
+    std::cout << "[TEST] Running Progression Presets & File IO tests..." << std::endl;
+
+    ScaleProgression prog;
+    prog.clear();
+    prog.addBlock({ 0, Scale_Major, 4.0f, "C Maj (4b)" });
+    prog.addBlock({ 7, Scale_Mixolydian, 4.0f, "G Mixo (4b)" });
+    assert(prog.getNumBlocks() == 2);
+    assert(std::abs(prog.getTotalBars() - 8.0f) < 0.01f);
+
+    // 1. File export & import
+    auto tempFile = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("test_progression.midifluxprog");
+    bool saved = prog.saveToFile(tempFile);
+    assert(saved);
+    assert(tempFile.existsAsFile());
+
+    ScaleProgression loadedProg;
+    bool loaded = loadedProg.loadFromFile(tempFile);
+    assert(loaded);
+    assert(loadedProg.getNumBlocks() == 2);
+    assert(loadedProg.getBlock(0).rootKey == 0);
+    assert(loadedProg.getBlock(1).rootKey == 7);
+    assert(loadedProg.getBlock(1).scaleType == Scale_Mixolydian);
+
+    tempFile.deleteFile();
+
+    // 2. User Progression presets
+    int initialUserCount = static_cast<int>(ScaleProgression::getUserProgressions().size());
+    ScaleProgression::addUserProgression("Test Progression Alpha", prog.getAllBlocks());
+    assert(static_cast<int>(ScaleProgression::getUserProgressions().size()) == initialUserCount + 1);
+    assert(ScaleProgression::getUserProgressions().back().name == "Test Progression Alpha");
+
+    ScaleProgression::deleteUserProgression(initialUserCount);
+    assert(static_cast<int>(ScaleProgression::getUserProgressions().size()) == initialUserCount);
+
+    std::cout << "  -> Progression Presets & File IO tests passed!" << std::endl;
+}
+
+void testMidiLearn()
+{
+    std::cout << "[TEST] Running MIDI Learn tests..." << std::endl;
+
+    MidiChainProcessor chain;
+    chain.addBlock("humanizer"); // block 0
+    chain.addBlock("chord");     // block 1
+
+    auto& learnMgr = chain.getMidiLearnManager();
+    learnMgr.clearAllMappings();
+
+    // 1. Learn a block parameter
+    juce::String paramTarget = "block:0:param:0";
+    learnMgr.startLearning(paramTarget);
+    assert(learnMgr.isLearning());
+    assert(learnMgr.isLearningParam(paramTarget));
+
+    // Send CC 74 on channel 1, value 100
+    juce::MidiMessage ccMsg = juce::MidiMessage::controllerEvent(1, 74, 100);
+    learnMgr.processMidiController(ccMsg, chain);
+
+    // Learning should now be completed
+    assert(!learnMgr.isLearning());
+    int boundCC = -1, boundCh = 0;
+    assert(learnMgr.getMappingForParam(paramTarget, boundCC, boundCh));
+    assert(boundCC == 74);
+
+    // 2. Incoming CC 74 should update parameter
+    juce::MidiMessage ccMsg2 = juce::MidiMessage::controllerEvent(1, 74, 127);
+    learnMgr.processMidiController(ccMsg2, chain);
+    auto* block0 = chain.getBlock(0);
+    assert(block0 != nullptr);
+    assert(block0->getParameterValue(0) >= 0.99f);
+
+    // 3. Learn module power / bypass toggle
+    juce::String powerTarget = "block:0:power";
+    learnMgr.setMapping(powerTarget, 80, 0);
+    assert(learnMgr.getMappingForParam(powerTarget, boundCC, boundCh));
+    assert(boundCC == 80);
+
+    // CC 80 value 0 -> bypass = true
+    juce::MidiMessage ccBypass = juce::MidiMessage::controllerEvent(1, 80, 0);
+    learnMgr.processMidiController(ccBypass, chain);
+    assert(block0->isBypassed());
+
+    // CC 80 value 127 -> bypass = false (enabled)
+    juce::MidiMessage ccEnable = juce::MidiMessage::controllerEvent(1, 80, 127);
+    learnMgr.processMidiController(ccEnable, chain);
+    assert(!block0->isBypassed());
+
+    // 4. Remap when block moves
+    learnMgr.remapBlockMoved(0, 1);
+    assert(learnMgr.getMappingForParam("block:1:param:0", boundCC, boundCh));
+    assert(boundCC == 74);
+
+    // 5. Remap when block removed
+    learnMgr.remapBlockRemoved(1);
+    assert(!learnMgr.getMappingForParam("block:1:param:0", boundCC, boundCh));
+
+    // 6. Serialization
+    learnMgr.setMapping("global:rootKey", 16, 0);
+    auto vt = learnMgr.getState();
+    MidiLearnManager restoredMgr;
+    restoredMgr.setState(vt);
+    assert(restoredMgr.getMappingForParam("global:rootKey", boundCC, boundCh));
+    assert(boundCC == 16);
+
+    std::cout << "  -> MIDI Learn tests passed!" << std::endl;
+}
+
+void testRoutingAndDelayDecayAndQuarterBar()
+{
+    std::cout << "[TEST] Running Routing, Delay Decay 200%, and 1/4 Bar Progression tests..." << std::endl;
+
+    // -------------------------------------------------------------
+    // 1. Parallel vs Series Chain Routing
+    // -------------------------------------------------------------
+    MidiChainProcessor chain;
+    chain.prepare(44100.0, 512);
+
+    // Block 0: Transpose +12 semitones
+    chain.addBlock("transpose");
+    assert(chain.getBlock(0) != nullptr);
+    chain.getBlock(0)->setParameterValue(0, 12.0f); // +12 st
+    chain.getBlock(0)->setRoutingMode(RoutingMode::Series);
+
+    // Block 1: Filter block set to Parallel
+    chain.addBlock("filter");
+    assert(chain.getBlock(1) != nullptr);
+    chain.getBlock(1)->setRoutingMode(RoutingMode::Parallel);
+
+    // Verify routing state get/set and serialization
+    assert(chain.getBlock(0)->getRoutingMode() == RoutingMode::Series);
+    assert(chain.getBlock(1)->getRoutingMode() == RoutingMode::Parallel);
+
+    auto state = chain.getState();
+    MidiChainProcessor chainRestored;
+    chainRestored.setState(state);
+    assert(chainRestored.getBlock(0)->getRoutingMode() == RoutingMode::Series);
+    assert(chainRestored.getBlock(1)->getRoutingMode() == RoutingMode::Parallel);
+
+    // Test audio/midi processing in parallel mode
+    // Incoming note is 60.
+    // In Series, b0 transposes 60 -> 72.
+    // In Parallel, b1 receives raw input (note 60) and merges output with b0.
+    juce::MidiBuffer inputBuffer;
+    inputBuffer.addEvent(juce::MidiMessage::noteOn(1, 60, (uint8_t)100), 0);
+
+    BlockContext ctx;
+    ctx.sampleRate = 44100.0;
+    ctx.numSamples = 512;
+    ctx.isPlaying = true;
+    ctx.bpm = 120.0;
+    ctx.ppqPosition = 0.0;
+    ctx.timeSigNumerator = 4;
+    ctx.timeSigDenominator = 4;
+
+    chain.processMidi(inputBuffer, ctx);
+
+    bool hasNote60 = false;
+    bool hasNote72 = false;
+    for (const auto meta : inputBuffer)
+    {
+        auto msg = meta.getMessage();
+        if (msg.isNoteOn())
+        {
+            if (msg.getNoteNumber() == 60) hasNote60 = true;
+            if (msg.getNoteNumber() == 72) hasNote72 = true;
+        }
+    }
+    assert(hasNote72); // From Transpose block (series)
+    assert(hasNote60); // From Filter block (parallel, received raw DAW input note 60!)
+
+    // -------------------------------------------------------------
+    // 2. MIDI Delay Decay up to 2.0 (200%) & Growing Echo Velocity
+    // -------------------------------------------------------------
+    auto delayBlock = MidiBlockFactory::createBlock("delay");
+    assert(delayBlock != nullptr);
+    delayBlock->prepare(44100.0, 512);
+
+    // Param 2 is decay: test setting 2.0 (200%)
+    const auto& decayDef = delayBlock->getParameterDef(2);
+    assert(decayDef.maxValue >= 2.0f);
+
+    delayBlock->setParameterValue(0, 2.0f); // 1/16 note delay
+    delayBlock->setParameterValue(1, 3.0f); // 3 repeats
+    delayBlock->setParameterValue(2, 1.5f); // 150% decay (growing velocity)
+    delayBlock->setParameterValue(3, 0.0f); // 0 pitch shift
+    delayBlock->setParameterValue(4, 0.0f); // scale snap off
+    assert(std::abs(delayBlock->getParameterValue(2) - 1.5f) < 0.01f);
+
+    // Send noteOn at initial velocity 50
+    juce::MidiBuffer delayMidi;
+    delayMidi.addEvent(juce::MidiMessage::noteOn(1, 60, (uint8_t)50), 0);
+
+    juce::MidiBuffer outBuf;
+    delayBlock->processBlock(delayMidi, outBuf, ctx);
+
+    // Initial note passed through at vel 50
+    bool foundPassThrough = false;
+    for (const auto meta : outBuf)
+    {
+        auto msg = meta.getMessage();
+        if (msg.isNoteOn() && msg.getNoteNumber() == 60 && msg.getVelocity() == 50)
+            foundPassThrough = true;
+    }
+    assert(foundPassThrough);
+
+    // Advance time until the first repeat triggers (1/16 note at 120 BPM = 0.125s = 5512.5 samples ~ 11 blocks of 512)
+    int samplesPer16th = static_cast<int>(44100.0 * (60.0 / 120.0) * 0.25);
+    int elapsed = 512;
+    uint8_t firstEchoVel = 0;
+
+    while (elapsed < samplesPer16th + 1024)
+    {
+        juce::MidiBuffer emptyIn;
+        juce::MidiBuffer stepOut;
+        ctx.ppqPosition = (double)elapsed / 44100.0 * 2.0; // 120 bpm = 2 beats/sec
+        delayBlock->processBlock(emptyIn, stepOut, ctx);
+        for (const auto meta : stepOut)
+        {
+            auto msg = meta.getMessage();
+            if (msg.isNoteOn() && msg.getNoteNumber() == 60)
+            {
+                firstEchoVel = msg.getVelocity();
+                break;
+            }
+        }
+        if (firstEchoVel > 0)
+            break;
+        elapsed += 512;
+    }
+
+    // Velocity grew from 50 to round(50 * 1.5) = 75!
+    assert(firstEchoVel > 50);
+    assert(firstEchoVel == 75);
+
+    // Test decay = 2.0f max clamp
+    delayBlock->setParameterValue(2, 2.0f);
+    assert(std::abs(delayBlock->getParameterValue(2) - 2.0f) < 0.01f);
+
+    // -------------------------------------------------------------
+    // 3. Scale Progression 1/4 Bar (0.25 Bars) Block Duration
+    // -------------------------------------------------------------
+    ScaleProgression prog;
+    prog.clear();
+
+    prog.addBlock({ 0, Scale_Major, 0.25f, "1/4 Bar C" });
+    prog.addBlock({ 9, Scale_NaturalMinor, 0.5f, "1/2 Bar Am" });
+    prog.setEnabled(true);
+    prog.setLoop(true);
+
+    assert(prog.getNumBlocks() == 2);
+    assert(std::abs(prog.getBlock(0).bars - 0.25f) < 0.001f);
+    assert(std::abs(prog.getTotalBars() - 0.75f) < 0.001f);
+
+    // In 4/4 time, 1 bar = 4.0 PPQ.
+    // 0.25 bar = 1.0 PPQ. Total 0.75 bar = 3.0 PPQ.
+    // At ppq = 0.5 (within first 1/4 bar):
+    auto st0 = prog.getPlaybackState(0.5, 4, 4);
+    assert(st0.activeBlockIndex == 0);
+    assert(st0.activeRootKey == 0);
+    assert(st0.activeScaleType == Scale_Major);
+
+    // At ppq = 1.5 (past 1.0 PPQ, within block 1 which is 1.0 to 3.0 PPQ):
+    auto st1 = prog.getPlaybackState(1.5, 4, 4);
+    assert(st1.activeBlockIndex == 1);
+    assert(st1.activeRootKey == 9);
+    assert(st1.activeScaleType == Scale_NaturalMinor);
+
+    // At ppq = 3.2 (loop wrapped back into first block):
+    auto stWrap = prog.getPlaybackState(3.2, 4, 4);
+    assert(stWrap.activeBlockIndex == 0);
+
+    std::cout << "  -> Routing, Delay Decay 200%, and 1/4 Bar Progression tests passed!" << std::endl;
+}
+
 int main()
 {
     std::cout << "========================================" << std::endl;
@@ -413,7 +882,15 @@ int main()
     testScaleAndTimingSeparation();
     testArpeggiatorHoldAndSustain();
     testStrummingAndTiming();
+    testRandomizeRackAndVisualFeedback();
+    testScaleProgressionSequencer();
+    testEditablePresets();
+    testProgressionPresetSavingAndFileIO();
+    testMidiLearn();
+    testRoutingAndDelayDecayAndQuarterBar();
 
-    std::cout << "\n>>> ALL 7 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
+    std::cout << "\n>>> ALL 13 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
     return 0;
 }
+
+

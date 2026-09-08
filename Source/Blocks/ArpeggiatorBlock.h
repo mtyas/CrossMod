@@ -33,6 +33,10 @@ public:
     bool isHoldActive() const { return holdMode > 0.5f; }
     void setHoldActive(bool h) { holdMode = h ? 1.0f : 0.0f; }
 
+    bool requiresDawPlayback() const override { return syncMode > 0.5f; }
+    juce::String getStatusDescription() const override;
+    int getVisualizerStep() const override { return currentStepIndex; }
+
 private:
     float arpMode = 0.0f;          // 0: Up, 1: Down, 2: Up/Down, 3: Converge, 4: Diverge, 5: Random, 6: Walk, 7: Chord
     float arpRate = 2.0f;          // 0: 1/4, 1: 1/8, 2: 1/16, 3: 1/32, 4: 1/8T, 5: 1/16T, 6: 1/8D, 7: 1/16D

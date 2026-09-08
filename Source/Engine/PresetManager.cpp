@@ -199,12 +199,121 @@ std::vector<Preset> PresetManager::getFactoryPresets()
     return presets;
 }
 
+std::vector<Preset> PresetManager::activePresets;
+bool PresetManager::initialized = false;
+
+juce::File PresetManager::getPresetsFile()
+{
+    auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                    .getChildFile("mtyas").getChildFile("MidiFlux");
+    dir.createDirectory();
+    return dir.getChildFile("UserPresets.xml");
+}
+
+void PresetManager::ensureInitialized()
+{
+    if (!initialized)
+    {
+        initialized = true;
+        loadFromDisk();
+        if (activePresets.empty())
+        {
+            activePresets = getFactoryPresets();
+            saveToDisk();
+        }
+    }
+}
+
+std::vector<Preset>& PresetManager::getPresets()
+{
+    ensureInitialized();
+    return activePresets;
+}
+
 void PresetManager::applyPreset(MidiChainProcessor& chain, int presetIndex)
 {
-    auto presets = getFactoryPresets();
-    if (presetIndex >= 0 && presetIndex < static_cast<int>(presets.size()))
+    ensureInitialized();
+    if (presetIndex >= 0 && presetIndex < static_cast<int>(activePresets.size()))
     {
-        chain.setState(presets[presetIndex].state);
+        chain.setState(activePresets[presetIndex].state);
+    }
+}
+
+void PresetManager::saveCurrentPreset(int index, const juce::ValueTree& state)
+{
+    ensureInitialized();
+    if (index >= 0 && index < static_cast<int>(activePresets.size()))
+    {
+        activePresets[index].state = state.createCopy();
+        saveToDisk();
+    }
+}
+
+void PresetManager::addPreset(const juce::String& name, const juce::ValueTree& state)
+{
+    ensureInitialized();
+    activePresets.push_back({ name, state.createCopy(), false });
+    saveToDisk();
+}
+
+void PresetManager::deletePreset(int index)
+{
+    ensureInitialized();
+    if (index >= 0 && index < static_cast<int>(activePresets.size()) && activePresets.size() > 1)
+    {
+        activePresets.erase(activePresets.begin() + index);
+        saveToDisk();
+    }
+}
+
+void PresetManager::resetToFactoryDefaults()
+{
+    activePresets = getFactoryPresets();
+    saveToDisk();
+}
+
+void PresetManager::saveToDisk()
+{
+    juce::ValueTree root("MidiFluxPresets");
+    for (const auto& p : activePresets)
+    {
+        juce::ValueTree pTree("Preset");
+        pTree.setProperty("name", p.name, nullptr);
+        pTree.setProperty("isFactory", p.isFactory, nullptr);
+        pTree.addChild(p.state.createCopy(), -1, nullptr);
+        root.addChild(pTree, -1, nullptr);
+    }
+    std::unique_ptr<juce::XmlElement> xml(root.createXml());
+    if (xml != nullptr)
+        xml->writeTo(getPresetsFile());
+}
+
+void PresetManager::loadFromDisk()
+{
+    auto file = getPresetsFile();
+    if (!file.existsAsFile())
+        return;
+
+    std::unique_ptr<juce::XmlElement> xml = juce::parseXML(file);
+    if (xml == nullptr)
+        return;
+
+    auto root = juce::ValueTree::fromXml(*xml);
+    if (!root.isValid() || root.getType() != juce::Identifier("MidiFluxPresets"))
+        return;
+
+    activePresets.clear();
+    for (int i = 0; i < root.getNumChildren(); ++i)
+    {
+        auto c = root.getChild(i);
+        if (c.getType() == juce::Identifier("Preset") && c.getNumChildren() > 0)
+        {
+            Preset p;
+            p.name = c.getProperty("name", "Preset").toString();
+            p.isFactory = static_cast<bool>(c.getProperty("isFactory", false));
+            p.state = c.getChild(0).createCopy();
+            activePresets.push_back(p);
+        }
     }
 }
 

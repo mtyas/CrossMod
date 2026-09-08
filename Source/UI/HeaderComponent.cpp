@@ -25,6 +25,8 @@ HeaderComponent::HeaderComponent(MidiChainProcessor& chain, UndoHistoryManager& 
         {
             updateUndoRedoButtons();
             syncScaleBoxes();
+            if (onRackNeedsRefresh)
+                onRackNeedsRefresh();
         }
     };
     addAndMakeVisible(undoBtn);
@@ -37,6 +39,8 @@ HeaderComponent::HeaderComponent(MidiChainProcessor& chain, UndoHistoryManager& 
         {
             updateUndoRedoButtons();
             syncScaleBoxes();
+            if (onRackNeedsRefresh)
+                onRackNeedsRefresh();
         }
     };
     addAndMakeVisible(redoBtn);
@@ -65,14 +69,28 @@ HeaderComponent::HeaderComponent(MidiChainProcessor& chain, UndoHistoryManager& 
     scaleLabel.setColour(juce::Label::textColourId, juce::Colour(0xff8b949e));
     addAndMakeVisible(scaleLabel);
 
+    // Scale Sequencer toggle button
+    seqToggleBtn.setClickingTogglesState(true);
+    seqToggleBtn.setToggleState(false, juce::dontSendNotification);
+    seqToggleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
+    seqToggleBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff00e5ff).withAlpha(0.35f));
+    seqToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colour(0xff00e5ff));
+    seqToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff8b949e));
+    seqToggleBtn.setTooltip("Toggle Global Scale & Song Progression Sequencer");
+    seqToggleBtn.onClick = [this]() {
+        if (onToggleScaleSequencer)
+            onToggleScaleSequencer();
+    };
+    addAndMakeVisible(seqToggleBtn);
+
     setupScales();
     setupPresets();
 
     // File Save & Load buttons
     savePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
     savePresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe6edf3));
-    savePresetBtn.setTooltip("Save current rack configuration to a preset file");
-    savePresetBtn.onClick = [this]() { savePresetToFile(); };
+    savePresetBtn.setTooltip("Save, overwrite, or manage presets");
+    savePresetBtn.onClick = [this]() { showSavePresetMenu(); };
     addAndMakeVisible(savePresetBtn);
 
     loadPresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
@@ -84,9 +102,11 @@ HeaderComponent::HeaderComponent(MidiChainProcessor& chain, UndoHistoryManager& 
     // Randomize all button
     randomAllBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
     randomAllBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe6edf3));
-    randomAllBtn.setTooltip("Randomize all modules in rack");
+    randomAllBtn.setTooltip("Randomize rack modules and parameters");
     randomAllBtn.onClick = [this]() {
-        chainProcessor.randomizeAll();
+        chainProcessor.randomizeRack(true);
+        if (onRackNeedsRefresh)
+            onRackNeedsRefresh();
         if (onStateChanged)
             onStateChanged();
     };
@@ -163,23 +183,11 @@ void HeaderComponent::setupPresets()
     presetLabel.setColour(juce::Label::textColourId, juce::Colour(0xff8b949e));
     addAndMakeVisible(presetLabel);
 
-    auto presets = PresetManager::getFactoryPresets();
-    for (size_t i = 0; i < presets.size(); ++i)
-        presetBox.addItem(presets[i].name, static_cast<int>(i + 1));
-
-    presetBox.setSelectedId(1, juce::dontSendNotification);
-    presetBox.onChange = [this]() {
-        int idx = presetBox.getSelectedId() - 1;
-        PresetManager::applyPreset(chainProcessor, idx);
-        syncScaleBoxes();
-        if (onStateChanged)
-            onStateChanged();
-    };
-    addAndMakeVisible(presetBox);
+    refreshPresetList();
 
     prevPresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
     prevPresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe6edf3));
-    prevPresetBtn.setTooltip("Previous factory preset");
+    prevPresetBtn.setTooltip("Previous preset");
     prevPresetBtn.onClick = [this]() {
         int cur = presetBox.getSelectedId();
         if (cur > 1) presetBox.setSelectedId(cur - 1);
@@ -189,13 +197,103 @@ void HeaderComponent::setupPresets()
 
     nextPresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff21262d));
     nextPresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffe6edf3));
-    nextPresetBtn.setTooltip("Next factory preset");
+    nextPresetBtn.setTooltip("Next preset");
     nextPresetBtn.onClick = [this]() {
         int cur = presetBox.getSelectedId();
         if (cur < presetBox.getNumItems()) presetBox.setSelectedId(cur + 1);
         else presetBox.setSelectedId(1);
     };
     addAndMakeVisible(nextPresetBtn);
+}
+
+void HeaderComponent::refreshPresetList()
+{
+    int selected = presetBox.getSelectedId();
+    presetBox.clear(juce::dontSendNotification);
+    auto& presets = PresetManager::getPresets();
+    for (size_t i = 0; i < presets.size(); ++i)
+        presetBox.addItem(presets[i].name, static_cast<int>(i + 1));
+
+    if (selected >= 1 && selected <= static_cast<int>(presets.size()))
+        presetBox.setSelectedId(selected, juce::dontSendNotification);
+    else if (!presets.empty())
+        presetBox.setSelectedId(1, juce::dontSendNotification);
+
+    presetBox.onChange = [this]() {
+        int idx = presetBox.getSelectedId() - 1;
+        PresetManager::applyPreset(chainProcessor, idx);
+        syncScaleBoxes();
+        if (onRackNeedsRefresh)
+            onRackNeedsRefresh();
+        if (onStateChanged)
+            onStateChanged();
+    };
+    addAndMakeVisible(presetBox);
+}
+
+void HeaderComponent::showSavePresetMenu()
+{
+    juce::PopupMenu m;
+    int currentIdx = presetBox.getSelectedId() - 1;
+    auto& presets = PresetManager::getPresets();
+    juce::String curName = (currentIdx >= 0 && currentIdx < static_cast<int>(presets.size()))
+                               ? presets[currentIdx].name : "Current";
+
+    m.addItem(1, "Overwrite Preset '" + curName + "'");
+    m.addItem(2, "Save as New Preset...");
+    m.addItem(3, "Save to File (.midiflux)...");
+    m.addSeparator();
+    m.addItem(4, "Delete Preset '" + curName + "'");
+    m.addItem(5, "Reset All Presets to Factory Defaults");
+
+    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&savePresetBtn),
+        [this, currentIdx](int result) {
+            if (result == 1)
+            {
+                PresetManager::saveCurrentPreset(currentIdx, chainProcessor.getState());
+            }
+            else if (result == 2)
+            {
+                promptSaveNewPreset();
+            }
+            else if (result == 3)
+            {
+                savePresetToFile();
+            }
+            else if (result == 4)
+            {
+                PresetManager::deletePreset(currentIdx);
+                refreshPresetList();
+            }
+            else if (result == 5)
+            {
+                PresetManager::resetToFactoryDefaults();
+                refreshPresetList();
+                if (onRackNeedsRefresh) onRackNeedsRefresh();
+            }
+        });
+}
+
+void HeaderComponent::promptSaveNewPreset()
+{
+    auto* aw = new juce::AlertWindow("Save New Preset", "Enter a name for this preset:", juce::AlertWindow::NoIcon);
+    aw->addTextEditor("presetName", "My Preset", "Preset Name:");
+    aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    aw->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    aw->enterModalState(true, juce::ModalCallbackFunction::create([this, aw](int result) {
+        if (result == 1)
+        {
+            auto name = aw->getTextEditorContents("presetName").trim();
+            if (name.isNotEmpty())
+            {
+                PresetManager::addPreset(name, chainProcessor.getState());
+                refreshPresetList();
+                presetBox.setSelectedId(presetBox.getNumItems(), juce::dontSendNotification);
+            }
+        }
+        delete aw;
+    }));
 }
 
 void HeaderComponent::savePresetToFile()
@@ -240,6 +338,8 @@ void HeaderComponent::loadPresetFromFile()
                 {
                     chainProcessor.setState(vt);
                     syncScaleBoxes();
+                    if (onRackNeedsRefresh)
+                        onRackNeedsRefresh();
                     if (onStateChanged)
                         onStateChanged();
                 }
@@ -299,18 +399,20 @@ void HeaderComponent::resized()
     x = 205;
     scaleLabel.setBounds(x, y + 4, 44, 18);
     x += 46;
-    rootKeyBox.setBounds(x, y, 62, h);
-    x += 66;
-    scaleTypeBox.setBounds(x, y, 136, h);
+    rootKeyBox.setBounds(x, y, 54, h);
+    x += 58;
+    scaleTypeBox.setBounds(x, y, 130, h);
+    x += 134;
+    seqToggleBtn.setBounds(x, y, 36, h);
 
     // Preset Controls
-    x = 470;
+    x = 485;
     presetLabel.setBounds(x, y + 4, 50, 18);
     x += 52;
     prevPresetBtn.setBounds(x, y, 22, h);
     x += 24;
-    presetBox.setBounds(x, y, 144, h);
-    x += 146;
+    presetBox.setBounds(x, y, 140, h);
+    x += 142;
     nextPresetBtn.setBounds(x, y, 22, h);
 
     // Save & Load Preset Buttons

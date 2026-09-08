@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../Common/MidiBlock.h"
+#include "../Engine/MidiChainProcessor.h"
 
 namespace MidiFlux
 {
@@ -9,10 +10,11 @@ namespace MidiFlux
 class BlockCardComponent : public juce::Component, public juce::Timer
 {
 public:
-    BlockCardComponent(MidiBlock* block, int blockIndex);
+    BlockCardComponent(MidiChainProcessor& chain, MidiBlock* block, int blockIndex);
     ~BlockCardComponent() override;
 
     void paint(juce::Graphics& g) override;
+    void paintOverChildren(juce::Graphics& g) override;
     void resized() override;
     void timerCallback() override;
 
@@ -28,17 +30,23 @@ public:
     void setBlockIndex(int idx) { blockIndex = idx; }
     MidiBlock* getBlock() { return block; }
 
+    void updateControlsFromBlock();
+
 private:
+    MidiChainProcessor& chainProcessor;
     MidiBlock* block = nullptr;
     int blockIndex = 0;
     bool ledActive = false;
+    float activityGlow = 0.0f;
+    bool isDawStopped = false;
 
     // Header buttons
     juce::TextButton powerButton{ "ON" };
-    juce::TextButton diceButton{ "🎲" };
-    juce::TextButton leftButton{ "◀" };
-    juce::TextButton rightButton{ "▶" };
-    juce::TextButton removeButton{ "✕" };
+    juce::TextButton routingButton{ "SER" };
+    juce::TextButton diceButton{ "DICE" };
+    juce::TextButton leftButton{ "<" };
+    juce::TextButton rightButton{ ">" };
+    juce::TextButton removeButton{ "X" };
 
     struct ParamControl
     {
@@ -49,7 +57,7 @@ private:
     };
     std::vector<ParamControl> controls;
 
-    void updateControlsFromBlock();
+    void showMidiLearnMenu(const juce::String& paramID, juce::Component* targetComp);
 };
 
 } // namespace MidiFlux

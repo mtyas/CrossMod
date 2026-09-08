@@ -30,6 +30,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float snapStrength = 1.0f;     // 0.0 = No quantize (0%), 1.0 = Full quantize (100%)
     float rootKey = 0.0f;          // 0: C ... 11: B

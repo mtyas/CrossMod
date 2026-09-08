@@ -28,6 +28,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float channelFilter = 0.0f;  // 0: All, 1..16
     float lowNote = 0.0f;        // 0 - 127

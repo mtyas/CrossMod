@@ -26,59 +26,98 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
                                          float sliderPosProportional, float rotaryStartAngle,
                                          float rotaryEndAngle, juce::Slider& slider)
 {
-    auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat().reduced(3.0f);
+    auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat().reduced(2.5f);
     auto radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
     auto center = bounds.getCentre();
 
     auto toAngle = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
-    float trackWidth = 4.0f;
+    float trackWidth = 4.5f;
 
-    // Background track arc
-    juce::Path backgroundArc;
-    backgroundArc.addCentredArc(center.x, center.y, radius - trackWidth * 0.5f, radius - trackWidth * 0.5f,
-                                0.0f, rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(juce::Colour(0xff21262d));
-    g.strokePath(backgroundArc, juce::PathStrokeType(trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-    // Foreground active arc with neon glow
     auto accentColor = slider.findColour(juce::Slider::rotarySliderFillColourId);
     if (accentColor.isTransparent())
         accentColor = juce::Colour(0xff00e5ff);
 
-    if (toAngle > rotaryStartAngle)
+    // 1. Tick marks/dots around the perimeter at 0%, 25%, 50%, 75%, 100%
+    float tickTrackRadius = radius - trackWidth * 0.5f;
+    for (int i = 0; i <= 4; ++i)
+    {
+        float frac = static_cast<float>(i) / 4.0f;
+        float angle = rotaryStartAngle + frac * (rotaryEndAngle - rotaryStartAngle);
+        auto pt = center.getPointOnCircumference(tickTrackRadius + trackWidth * 0.5f + 3.0f, angle);
+        bool isHit = (toAngle >= angle - 0.03f);
+        g.setColour(isHit ? accentColor.brighter(0.4f) : juce::Colour(0xff8b949e));
+        g.fillEllipse(pt.x - 1.25f, pt.y - 1.25f, 2.5f, 2.5f);
+    }
+
+    // 2. Background track groove (crisp, high-contrast dark slate rim)
+    juce::Path backgroundArc;
+    backgroundArc.addCentredArc(center.x, center.y, tickTrackRadius, tickTrackRadius,
+                                0.0f, rotaryStartAngle, rotaryEndAngle, true);
+    // Outer groove boundary
+    g.setColour(juce::Colour(0xff3d444d));
+    g.strokePath(backgroundArc, juce::PathStrokeType(trackWidth + 1.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    // Inner track bed
+    g.setColour(juce::Colour(0xff161b22));
+    g.strokePath(backgroundArc, juce::PathStrokeType(trackWidth - 1.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    // 3. Foreground active value arc with luminous glow
+    if (toAngle > rotaryStartAngle + 0.005f)
     {
         juce::Path valueArc;
-        valueArc.addCentredArc(center.x, center.y, radius - trackWidth * 0.5f, radius - trackWidth * 0.5f,
+        valueArc.addCentredArc(center.x, center.y, tickTrackRadius, tickTrackRadius,
                                0.0f, rotaryStartAngle, toAngle, true);
 
-        // Glow shadow
-        g.setColour(accentColor.withAlpha(0.25f));
-        g.strokePath(valueArc, juce::PathStrokeType(trackWidth + 3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        // Ambient neon aura
+        g.setColour(accentColor.withAlpha(0.30f));
+        g.strokePath(valueArc, juce::PathStrokeType(trackWidth + 4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-        // Core line
-        g.setColour(accentColor);
+        // Core luminous line
+        g.setColour(accentColor.brighter(0.2f));
         g.strokePath(valueArc, juce::PathStrokeType(trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
-    // Inner dial knob
+    // 4. Elevated tactile metallic knob cap
     float knobRadius = radius - trackWidth - 3.5f;
     if (knobRadius > 4.0f)
     {
-        juce::ColourGradient knobGrad(juce::Colour(0xff242931), center.x - knobRadius, center.y - knobRadius,
-                                      juce::Colour(0xff161b22), center.x + knobRadius, center.y + knobRadius, false);
+        // Soft outer drop shadow
+        g.setColour(juce::Colour(0x66000000));
+        g.fillEllipse(center.x - knobRadius, center.y - knobRadius + 1.5f, knobRadius * 2.0f, knobRadius * 2.0f);
+
+        // Brushed metallic gradient from top-left to bottom-right
+        juce::ColourGradient knobGrad(juce::Colour(0xff384252), center.x - knobRadius * 0.7f, center.y - knobRadius * 0.7f,
+                                      juce::Colour(0xff212733), center.x + knobRadius * 0.7f, center.y + knobRadius * 0.7f, false);
         g.setGradientFill(knobGrad);
         g.fillEllipse(center.x - knobRadius, center.y - knobRadius, knobRadius * 2.0f, knobRadius * 2.0f);
 
-        g.setColour(juce::Colour(0xff30363d));
-        g.drawEllipse(center.x - knobRadius, center.y - knobRadius, knobRadius * 2.0f, knobRadius * 2.0f, 1.0f);
+        // Crisp highlight bevel rim
+        g.setColour(juce::Colour(0xff5b687a));
+        g.drawEllipse(center.x - knobRadius, center.y - knobRadius, knobRadius * 2.0f, knobRadius * 2.0f, 1.4f);
 
-        // Pointer tick line
-        float thumbLength = knobRadius * 0.70f;
+        // Subtle concentric groove inside
+        float innerGrooveR = knobRadius * 0.65f;
+        g.setColour(juce::Colour(0xff181e28).withAlpha(0.6f));
+        g.drawEllipse(center.x - innerGrooveR, center.y - innerGrooveR, innerGrooveR * 2.0f, innerGrooveR * 2.0f, 1.0f);
+
+        // 5. High-contrast indicator needle with white core + illuminated pip
+        float thumbLength = knobRadius * 0.78f;
         auto thumbPoint = center.getPointOnCircumference(thumbLength, toAngle);
-        auto innerPoint = center.getPointOnCircumference(knobRadius * 0.20f, toAngle);
+        auto innerPoint = center.getPointOnCircumference(knobRadius * 0.18f, toAngle);
 
+        // Needle accent shadow / glow
+        g.setColour(accentColor.withAlpha(0.6f));
+        g.drawLine(innerPoint.x, innerPoint.y, thumbPoint.x, thumbPoint.y, 4.0f);
+
+        // Needle sharp white core
+        g.setColour(juce::Colour(0xffffffff));
+        g.drawLine(innerPoint.x, innerPoint.y, thumbPoint.x, thumbPoint.y, 2.0f);
+
+        // Illuminated pointer pip at knob edge
+        auto pipPoint = center.getPointOnCircumference(knobRadius * 0.72f, toAngle);
         g.setColour(accentColor);
-        g.drawLine(innerPoint.x, innerPoint.y, thumbPoint.x, thumbPoint.y, 2.5f);
+        g.fillEllipse(pipPoint.x - 3.2f, pipPoint.y - 3.2f, 6.4f, 6.4f);
+        g.setColour(juce::Colour(0xffffffff));
+        g.fillEllipse(pipPoint.x - 1.8f, pipPoint.y - 1.8f, 3.6f, 3.6f);
     }
 }
 
@@ -238,6 +277,18 @@ void CustomLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, b
     p.addTriangle(arrowX, arrowY, arrowX + 8.0f, arrowY, arrowX + 4.0f, arrowY + 5.0f);
     g.setColour(juce::Colour(0xff8b949e));
     g.fillPath(p);
+}
+
+juce::Font CustomLookAndFeel::getComboBoxFont(juce::ComboBox& box)
+{
+    float fontHeight = juce::jlimit(11.0f, 13.5f, box.getHeight() * 0.58f);
+    return juce::FontOptions("Segoe UI", fontHeight, juce::Font::bold);
+}
+
+void CustomLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
+{
+    label.setBounds(3, 1, box.getWidth() - 18, box.getHeight() - 2);
+    label.setFont(getComboBoxFont(box));
 }
 
 void CustomLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int width, int height)

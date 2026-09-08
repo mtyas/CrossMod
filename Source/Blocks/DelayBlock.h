@@ -29,10 +29,12 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float delayTime = 2.0f;        // 0: 1/4, 1: 1/8, 2: 1/16, 3: 1/8D, 4: 1/16D, 5: 1/8T, 6: 1/16T
     float repeatCount = 3.0f;      // 1 to 8
-    float decayRate = 0.65f;       // 0.1 to 0.9
+    float decayRate = 0.65f;       // 0.1 to 2.0 (10% to 200%)
     float pitchShiftPerTap = 0.0f; // -12 to +12 semitones
     float scaleSnap = 1.0f;        // 0: Off, 1: On
 

@@ -25,7 +25,14 @@ const juce::String MidiFluxAudioProcessor::getName() const
 
 bool MidiFluxAudioProcessor::acceptsMidi() const { return true; }
 bool MidiFluxAudioProcessor::producesMidi() const { return true; }
-bool MidiFluxAudioProcessor::isMidiEffect() const { return true; }
+bool MidiFluxAudioProcessor::isMidiEffect() const
+{
+   #if JucePlugin_IsMidiEffect
+    return true;
+   #else
+    return false;
+   #endif
+}
 double MidiFluxAudioProcessor::getTailLengthSeconds() const { return 0.0; }
 
 int MidiFluxAudioProcessor::getNumPrograms() { return 1; }
@@ -110,6 +117,7 @@ void MidiFluxAudioProcessor::processBlock(juce::AudioBuffer<float>& audioBuffer,
         }
     }
 
+    chain.setIsDawPlaying(ctx.isPlaying);
     chain.processMidi(midiMessages, ctx);
 }
 

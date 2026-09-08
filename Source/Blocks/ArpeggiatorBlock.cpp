@@ -418,4 +418,13 @@ void ArpeggiatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String ArpeggiatorBlock::getStatusDescription() const
+{
+    static const char* modeNames[] = { "Up", "Down", "Up/Down", "Converge", "Diverge", "Random", "Walk", "Chord" };
+    static const char* rateNames[] = { "1/4", "1/8", "1/16", "1/32", "1/8T", "1/16T", "1/8D", "1/16D" };
+    int m = juce::jlimit(0, 7, (int)std::round(arpMode));
+    int r = juce::jlimit(0, 7, (int)std::round(arpRate));
+    return juce::String(modeNames[m]) + " • " + juce::String(rateNames[r]);
+}
+
 } // namespace MidiFlux

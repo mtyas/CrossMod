@@ -169,4 +169,14 @@ void HarmonizerBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String HarmonizerBlock::getStatusDescription() const
+{
+    static const char* vNames[] = { "Off", "+3rd", "-3rd", "+5th", "+6th", "+Oct", "-Oct", "+7st" };
+    int v1 = juce::jlimit(0, 7, static_cast<int>(std::round(voice1Interval)));
+    int v2 = juce::jlimit(0, 7, static_cast<int>(std::round(voice2Interval)));
+    if (v1 == 0 && v2 == 0) return "No Harmonies Active";
+    if (v2 == 0) return juce::String("Voice: ") + vNames[v1];
+    return juce::String("V1: ") + vNames[v1] + " | V2: " + vNames[v2];
+}
+
 } // namespace MidiFlux

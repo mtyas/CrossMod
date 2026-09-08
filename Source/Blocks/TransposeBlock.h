@@ -29,6 +29,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float chromaticShift = 0.0f;     // -36 to +36
     float diatonicShift = 0.0f;      // -14 to +14

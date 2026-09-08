@@ -28,6 +28,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float velCurve = 0.0f;       // 0: Linear, 1: Compress, 2: Expand, 3: Log, 4: Exp, 5: Invert, 6: Random
     float velOutMin = 1.0f;      // 1 - 127

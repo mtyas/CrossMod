@@ -156,4 +156,12 @@ void ProbabilityBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String ProbabilityBlock::getStatusDescription() const
+{
+    juce::String s = "Pass: " + juce::String(static_cast<int>(gateProb * 100.0f)) + "%";
+    if (ghostNoteProb > 0.01f)
+        s += " | Ghost: " + juce::String(static_cast<int>(ghostNoteProb * 100.0f)) + "%";
+    return s;
+}
+
 } // namespace MidiFlux

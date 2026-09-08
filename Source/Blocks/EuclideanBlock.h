@@ -29,6 +29,11 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    bool requiresDawPlayback() const override { return true; }
+    juce::String getStatusDescription() const override;
+    int getVisualizerStep() const override { return currentStep; }
+    bool isStepHit(int step) const { return isHit(step, (int)std::round(pulses), (int)std::round(steps), (int)std::round(rotation)); }
+
 private:
     float pulses = 5.0f;       // 1 to 16
     float steps = 8.0f;        // 1 to 16
@@ -45,6 +50,8 @@ private:
         int channel;
         int noteNumber;
         uint8_t velocity;
+        bool isHeld = true;
+        int releaseGraceSamples = 0;
     };
     std::vector<HeldNote> heldNotes;
 

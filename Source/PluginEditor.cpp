@@ -6,9 +6,10 @@ namespace MidiFlux
 MidiFluxAudioProcessorEditor::MidiFluxAudioProcessorEditor(MidiFluxAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p),
       header(p.getChain(), undoHistory),
+      scaleSequencer(p.getChain()),
       rack(p.getChain()),
       midiMonitor(p.getChain()),
-      virtualKeyboard(48, 37) // C3 to C6
+      virtualKeyboard(21, 88) // A0 to C8 (88 keys)
 {
     setLookAndFeel(&customLookAndFeel);
 
@@ -19,11 +20,23 @@ MidiFluxAudioProcessorEditor::MidiFluxAudioProcessorEditor(MidiFluxAudioProcesso
         undoHistory.pushState(audioProcessor.getChain().getState());
     };
 
+    header.onRackNeedsRefresh = [this]() {
+        rack.rebuildCards();
+    };
+
     header.onStateChanged = [this]() {
+        rack.rebuildCards();
+        scaleSequencer.rebuildBlockCards();
+        undoHistory.pushState(audioProcessor.getChain().getState());
+    };
+
+    scaleSequencer.onProgressionChanged = [this]() {
         undoHistory.pushState(audioProcessor.getChain().getState());
     };
 
     addAndMakeVisible(header);
+    addChildComponent(scaleSequencer);
+    scaleSequencer.setVisible(scaleSequencerVisible);
     addAndMakeVisible(rack);
     addAndMakeVisible(midiMonitor);
     addAndMakeVisible(virtualKeyboard);
@@ -37,6 +50,13 @@ MidiFluxAudioProcessorEditor::MidiFluxAudioProcessorEditor(MidiFluxAudioProcesso
     header.onToggleKeyboard = [this]() {
         keyboardVisible = !keyboardVisible;
         virtualKeyboard.setVisible(keyboardVisible);
+        resized();
+    };
+
+    // Connect scale sequencer toggle
+    header.onToggleScaleSequencer = [this]() {
+        scaleSequencerVisible = !scaleSequencerVisible;
+        scaleSequencer.setVisible(scaleSequencerVisible);
         resized();
     };
 
@@ -70,6 +90,8 @@ bool MidiFluxAudioProcessorEditor::keyPressed(const juce::KeyPress& key)
         {
             header.updateUndoRedoButtons();
             header.syncScaleBoxes();
+            scaleSequencer.rebuildBlockCards();
+            rack.rebuildCards();
             return true;
         }
     }
@@ -82,6 +104,8 @@ bool MidiFluxAudioProcessorEditor::keyPressed(const juce::KeyPress& key)
         {
             header.updateUndoRedoButtons();
             header.syncScaleBoxes();
+            scaleSequencer.rebuildBlockCards();
+            rack.rebuildCards();
             return true;
         }
     }
@@ -99,8 +123,10 @@ void MidiFluxAudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
 
     header.setBounds(bounds.removeFromTop(52));
+    if (scaleSequencerVisible)
+        scaleSequencer.setBounds(bounds.removeFromTop(86));
     if (keyboardVisible)
-        virtualKeyboard.setBounds(bounds.removeFromBottom(74));
+        virtualKeyboard.setBounds(bounds.removeFromBottom(82));
     midiMonitor.setBounds(bounds.removeFromBottom(28));
     rack.setBounds(bounds);
 }

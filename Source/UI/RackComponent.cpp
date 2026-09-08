@@ -156,7 +156,7 @@ void RackComponent::rebuildCards()
         auto* block = chainProcessor.getBlock(i);
         if (block)
         {
-            auto card = std::make_unique<BlockCardComponent>(block, i);
+            auto card = std::make_unique<BlockCardComponent>(chainProcessor, block, i);
             card->onMoveLeft = [this](int idx) { handleMoveLeft(idx); };
             card->onMoveRight = [this](int idx) { handleMoveRight(idx); };
             card->onRemove = [this](int idx) { handleRemove(idx); };

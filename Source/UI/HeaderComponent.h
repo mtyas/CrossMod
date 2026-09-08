@@ -23,13 +23,15 @@ public:
     std::function<void()> onPanicTriggered;
     std::function<void()> onStateChanged;
     std::function<void()> onToggleKeyboard;
+    std::function<void()> onToggleScaleSequencer;
+    std::function<void()> onRackNeedsRefresh;
 
 private:
     MidiChainProcessor& chainProcessor;
     UndoHistoryManager& undoHistory;
 
     juce::Label titleLabel{ "", "MIDIFLUX" };
-    juce::Label subtitleLabel{ "", "MODULAR MIDI RACK" };
+    juce::Label subtitleLabel{ "", "by mtyas" };
 
     // Undo / Redo
     juce::TextButton undoBtn{ "UNDO" };
@@ -42,6 +44,7 @@ private:
     juce::Label scaleLabel{ "", "SCALE:" };
     juce::ComboBox rootKeyBox;
     juce::ComboBox scaleTypeBox;
+    juce::TextButton seqToggleBtn{ "SEQ" };
 
     // Presets
     juce::Label presetLabel{ "", "PRESET:" };
@@ -62,6 +65,9 @@ private:
 
     void setupPresets();
     void setupScales();
+    void refreshPresetList();
+    void showSavePresetMenu();
+    void promptSaveNewPreset();
     void savePresetToFile();
     void loadPresetFromFile();
 };

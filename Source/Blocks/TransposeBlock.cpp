@@ -148,4 +148,16 @@ void TransposeBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String TransposeBlock::getStatusDescription() const
+{
+    int totalSemi = static_cast<int>(std::round(chromaticShift + octaveShift * 12.0f));
+    int diat = static_cast<int>(std::round(diatonicShift));
+    juce::String s = (totalSemi >= 0 ? "+" : "") + juce::String(totalSemi) + " st";
+    if (diat != 0)
+        s += " (" + juce::String(diat >= 0 ? "+" : "") + juce::String(diat) + " diatonic)";
+    if (randomJumpChance > 0.01f)
+        s += " | Jump: " + juce::String(static_cast<int>(randomJumpChance * 100.0f)) + "%";
+    return s;
+}
+
 } // namespace MidiFlux

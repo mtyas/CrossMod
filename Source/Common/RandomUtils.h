@@ -10,10 +10,17 @@ namespace MidiFlux
 class FastRandom
 {
 public:
-    FastRandom(uint64_t seed = 0x853c49e6748fea9bULL)
+    FastRandom(uint64_t seed = 0)
     {
         if (seed == 0)
-            seed = 0x853c49e6748fea9bULL;
+        {
+            static std::atomic<uint64_t> counter{ 0x12345678ULL };
+            uint64_t c = counter.fetch_add(0x9e3779b97f4a7c15ULL, std::memory_order_relaxed);
+            std::random_device rd;
+            uint64_t ent = (static_cast<uint64_t>(rd()) << 32) | static_cast<uint64_t>(rd());
+            seed = ent ^ c ^ 0x853c49e6748fea9bULL;
+            if (seed == 0) seed = 0x853c49e6748fea9bULL;
+        }
         state = seed;
     }
 

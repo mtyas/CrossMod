@@ -227,4 +227,20 @@ void TimeQuantizeBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String TimeQuantizeBlock::getStatusDescription() const
+{
+    static const char* gridNames[] = {
+        "1/4", "1/4T", "1/4D",
+        "1/8", "1/8T", "1/8D",
+        "1/16", "1/16T", "1/16D",
+        "1/32", "1/32T", "1/32D",
+        "1/64"
+    };
+    int g = juce::jlimit(0, 12, (int)std::round(gridDivision));
+    juce::String desc = "GRID: " + juce::String(gridNames[g]);
+    if (swing > 0.01f)
+        desc += " (SWING " + juce::String((int)(swing * 100)) + "%)";
+    return desc;
+}
+
 } // namespace MidiFlux

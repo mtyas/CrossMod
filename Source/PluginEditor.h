@@ -7,6 +7,7 @@
 #include "UI/HeaderComponent.h"
 #include "UI/RackComponent.h"
 #include "UI/MidiMonitorComponent.h"
+#include "UI/ScaleSequencerComponent.h"
 #include "UI/VirtualKeyboardComponent.h"
 
 namespace MidiFlux
@@ -29,6 +30,9 @@ private:
     UndoHistoryManager undoHistory;
 
     HeaderComponent header;
+    ScaleSequencerComponent scaleSequencer;
+    bool scaleSequencerVisible = false;
+
     RackComponent rack;
     MidiMonitorComponent midiMonitor;
     VirtualKeyboardComponent virtualKeyboard;

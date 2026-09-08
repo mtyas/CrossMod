@@ -125,6 +125,10 @@ void ChordBlock::processBlock(const juce::MidiBuffer& inputMidi,
             int typeIdx = static_cast<int>(std::round(chordType));
             ChordType ct = static_cast<ChordType>(typeIdx);
 
+            static const char* typeNames[] = { "Diatonic", "Major", "Minor", "Dom7", "Maj7", "Min7", "Sus2", "Sus4", "Dim", "9th", "Power" };
+            int tIdx = juce::jlimit(0, 10, typeIdx);
+            lastVoicedChord = juce::String(ScaleTheory::getNoteName(rootNote % 12)) + " " + juce::String(typeNames[tIdx]);
+
             auto intervals = ScaleTheory::getChordIntervals(rootNote, ct, ctx.rootKey, ctx.scaleType);
 
             // Inversion

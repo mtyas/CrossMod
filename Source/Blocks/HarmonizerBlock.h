@@ -30,6 +30,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float voice1Interval = 1.0f;   // 0: Off, 1: Diat 3rd Up, 2: Diat 3rd Down, 3: Diat 5th Up, 4: Diat 6th Up, 5: Octave Up, 6: Octave Down, 7: Fifth Up (+7)
     float voice2Interval = 0.0f;   // Same options

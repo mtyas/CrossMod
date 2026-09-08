@@ -30,7 +30,10 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override { return lastVoicedChord; }
+
 private:
+    mutable juce::String lastVoicedChord{ "Diatonic Auto" };
     float chordType = 0.0f;     // 0: Diatonic Auto, 1: Maj, 2: Min, 3: Dom7, 4: Maj7, 5: Min7, 6: Sus2, 7: Sus4, 8: Dim, 9: 9th, 10: Power
     float inversion = 0.0f;     // 0: Root, 1: 1st, 2: 2nd, 3: 3rd, 4: Random
     float voicing = 0.0f;       // 0: Close, 1: Drop-2, 2: Drop-3, 3: Spread Open

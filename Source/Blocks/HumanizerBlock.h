@@ -30,6 +30,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float timingJitterMs = 30.0f;  // 0 - 100 ms (Pronounced jitter)
     float pushPullMs = 0.0f;       // -50 ms to +50 ms

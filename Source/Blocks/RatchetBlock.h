@@ -29,6 +29,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float ratchetChance = 0.50f;   // 0.0 - 1.0
     float subdivisions = 2.0f;     // 0: 2x, 1: 3x, 2: 4x, 3: 6x, 4: 8x, 5: Random

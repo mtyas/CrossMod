@@ -149,4 +149,11 @@ void MapperBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String MapperBlock::getStatusDescription() const
+{
+    static const char* curves[] = { "Linear", "Compress", "Expand", "Log", "Exp", "Invert", "Random" };
+    int cIdx = juce::jlimit(0, 6, static_cast<int>(std::round(velCurve)));
+    return "Vel Curve: " + juce::String(curves[cIdx]) + " (" + juce::String(static_cast<int>(velOutMin)) + "-" + juce::String(static_cast<int>(velOutMax)) + ")";
+}
+
 } // namespace MidiFlux

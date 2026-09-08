@@ -40,7 +40,7 @@ const ParameterDefinition& DelayBlock::getParameterDef(int index) const
     static const std::array<ParameterDefinition, 5> defs = {{
         { "delayTime",  "Time",       0.0f, 6.0f, 2.0f, 1.0f, "", { "1/4", "1/8", "1/16", "1/8D", "1/16D", "1/8T", "1/16T" } },
         { "repeats",    "Repeats",    1.0f, 8.0f, 3.0f, 1.0f, "", {} },
-        { "decay",      "Decay",      0.1f, 0.9f, 0.65f, 0.01f, "%", {} },
+        { "decay",      "Decay",      0.1f, 2.0f, 0.65f, 0.01f, "%", {} },
         { "pitchShift", "Shift / Tap",-12.0f, 12.0f, 0.0f, 1.0f, "st", {} },
         { "snapScale",  "Snap Scale", 0.0f, 1.0f, 1.0f, 1.0f, "", { "Off", "On" } }
     }};
@@ -66,7 +66,7 @@ void DelayBlock::setParameterValue(int index, float value)
     {
         case 0: delayTime = juce::jlimit(0.0f, 6.0f, value); break;
         case 1: repeatCount = juce::jlimit(1.0f, 8.0f, value); break;
-        case 2: decayRate = juce::jlimit(0.1f, 0.9f, value); break;
+        case 2: decayRate = juce::jlimit(0.1f, 2.0f, value); break;
         case 3: pitchShiftPerTap = juce::jlimit(-12.0f, 12.0f, value); break;
         case 4: scaleSnap = juce::jlimit(0.0f, 1.0f, value); break;
     }
@@ -150,8 +150,10 @@ void DelayBlock::processBlock(const juce::MidiBuffer& inputMidi,
             for (int r = 1; r <= repeats; ++r)
             {
                 currentVel *= decayRate;
-                if (currentVel < 5.0f)
+                if (decayRate <= 1.0f && currentVel < 5.0f)
                     break;
+                if (currentVel > 127.0f)
+                    currentVel = 127.0f;
 
                 currentPitch += shift;
                 int echoPitch = currentPitch;
@@ -162,7 +164,8 @@ void DelayBlock::processBlock(const juce::MidiBuffer& inputMidi,
                 int onDelay = samplePos + r * delaySamples;
                 int offDelay = onDelay + noteDur;
 
-                activeEchoes.push_back({ ch, echoPitch, (uint8_t)std::round(currentVel), onDelay, true });
+                uint8_t outVel = static_cast<uint8_t>(juce::jlimit(1, 127, (int)std::round(currentVel)));
+                activeEchoes.push_back({ ch, echoPitch, outVel, onDelay, true });
                 activeEchoes.push_back({ ch, echoPitch, 0, offDelay, false });
             }
         }
@@ -175,6 +178,13 @@ void DelayBlock::processBlock(const juce::MidiBuffer& inputMidi,
             outputMidi.addEvent(msg, samplePos);
         }
     }
+}
+
+juce::String DelayBlock::getStatusDescription() const
+{
+    static const char* timeNames[] = { "1/4", "1/8", "1/16", "1/8D", "1/16D", "1/8T", "1/16T" };
+    int tIdx = juce::jlimit(0, 6, static_cast<int>(std::round(delayTime)));
+    return "Taps: " + juce::String(static_cast<int>(repeatCount)) + " @ " + juce::String(timeNames[tIdx]) + " (" + juce::String(static_cast<int>(decayRate * 100.0f)) + "%)";
 }
 
 } // namespace MidiFlux

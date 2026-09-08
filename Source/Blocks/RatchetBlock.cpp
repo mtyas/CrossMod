@@ -172,4 +172,11 @@ void RatchetBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String RatchetBlock::getStatusDescription() const
+{
+    static const char* divNames[] = { "1/16", "1/32", "1/64" };
+    int divIdx = juce::jlimit(0, 2, static_cast<int>(std::round(burstDivision)));
+    return "Rate: " + juce::String(divNames[divIdx]) + " | Chance: " + juce::String(static_cast<int>(ratchetChance * 100.0f)) + "%";
+}
+
 } // namespace MidiFlux

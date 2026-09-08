@@ -38,6 +38,12 @@ struct ParameterDefinition
     std::vector<juce::String> options = {}; // If discrete choices
 };
 
+enum class RoutingMode
+{
+    Series = 0,   // Receives MIDI from previous module in chain
+    Parallel = 1  // Receives raw MIDI from DAW input, merges output into chain
+};
+
 class MidiBlock
 {
 public:
@@ -69,6 +75,9 @@ public:
     bool isSoloed() const { return soloed.load(std::memory_order_relaxed); }
     void setSoloed(bool s) { soloed.store(s, std::memory_order_relaxed); }
 
+    RoutingMode getRoutingMode() const { return routingMode.load(std::memory_order_relaxed); }
+    void setRoutingMode(RoutingMode mode) { routingMode.store(mode, std::memory_order_relaxed); }
+
     void triggerActivity()
     {
         activityCount.store(15, std::memory_order_relaxed);
@@ -84,6 +93,16 @@ public:
         }
         return false;
     }
+
+    // Transport requirement (DAW playback)
+    virtual bool requiresDawPlayback() const { return false; }
+
+    // Dynamic contextual status description for UI
+    virtual juce::String getStatusDescription() const { return {}; }
+
+    // Real-time animation feedback (e.g. LFO curve, sequence step)
+    virtual float getVisualizerValue() const { return 0.0f; }
+    virtual int getVisualizerStep() const { return 0; }
 
     // Parameter abstraction
     virtual int getNumParameters() const = 0;
@@ -137,6 +156,7 @@ public:
         juce::ValueTree vt("Block");
         vt.setProperty("type", getTypeId(), nullptr);
         vt.setProperty("bypassed", isBypassed(), nullptr);
+        vt.setProperty("routingMode", static_cast<int>(getRoutingMode()), nullptr);
 
         for (int i = 0; i < getNumParameters(); ++i)
         {
@@ -150,6 +170,9 @@ public:
     {
         if (vt.hasProperty("bypassed"))
             setBypassed(static_cast<bool>(vt.getProperty("bypassed")));
+
+        if (vt.hasProperty("routingMode"))
+            setRoutingMode(static_cast<RoutingMode>(static_cast<int>(vt.getProperty("routingMode"))));
 
         for (int i = 0; i < getNumParameters(); ++i)
         {
@@ -165,6 +188,7 @@ public:
 protected:
     std::atomic<bool> bypassed{ false };
     std::atomic<bool> soloed{ false };
+    std::atomic<RoutingMode> routingMode{ RoutingMode::Series };
     std::atomic<int> activityCount{ 0 };
 };
 

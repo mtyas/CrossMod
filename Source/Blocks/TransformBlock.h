@@ -30,6 +30,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float pitchInvert = 1.0f;     // 0: Off, 1: On
     float pivotNote = 60.0f;      // 0 - 127 (C4 = 60 default)

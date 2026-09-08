@@ -192,4 +192,9 @@ void HumanizerBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String HumanizerBlock::getStatusDescription() const
+{
+    return "Vel: ±" + juce::String(static_cast<int>(std::round(velocityJitter))) + " | Time: ±" + juce::String(static_cast<int>(std::round(timingJitterMs))) + "ms";
+}
+
 } // namespace MidiFlux

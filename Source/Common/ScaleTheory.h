@@ -107,6 +107,18 @@ public:
         return names[(noteNumber % 12 + 12) % 12];
     }
 
+    static juce::String noteName(int noteNumber)
+    {
+        int oct = (noteNumber / 12) - 1;
+        return juce::String(getNoteName(noteNumber)) + juce::String(oct);
+    }
+
+    static const ScaleInfo& getScaleDef(int scaleType)
+    {
+        int idx = juce::jlimit(0, static_cast<int>(NumScales) - 1, scaleType);
+        return getAllScales()[idx];
+    }
+
     static bool isNoteInScale(int noteNumber, int rootKey, int scaleType)
     {
         if (scaleType < 0 || scaleType >= NumScales || scaleType == Scale_Chromatic)

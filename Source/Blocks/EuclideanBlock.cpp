@@ -99,6 +99,17 @@ void EuclideanBlock::processBlock(const juce::MidiBuffer& inputMidi,
         return;
     }
 
+    double div = 0.25; // 1/16
+    int rIdx = static_cast<int>(std::round(rateDivision));
+    if (rIdx == 0) div = 1.0;
+    else if (rIdx == 1) div = 0.5;
+    else if (rIdx == 2) div = 0.25;
+    else if (rIdx == 3) div = 0.125;
+
+    double bpm = (ctx.bpm > 0.0) ? ctx.bpm : 120.0;
+    double quartersPerSample = (bpm / 60.0) / currentSampleRate;
+    double samplesPerStep = div * (60.0 / bpm) * currentSampleRate;
+
     // Process incoming notes
     for (const auto metadata : inputMidi)
     {
@@ -120,20 +131,45 @@ void EuclideanBlock::processBlock(const juce::MidiBuffer& inputMidi,
                 return hn.channel == ch && hn.noteNumber == note;
             });
             if (it == heldNotes.end())
-                heldNotes.push_back({ ch, note, msg.getVelocity() });
+                heldNotes.push_back({ ch, note, msg.getVelocity(), true, 0 });
             else
+            {
                 it->velocity = msg.getVelocity();
+                it->isHeld = true;
+                it->releaseGraceSamples = 0;
+            }
         }
         else if (msg.isNoteOff())
         {
-            heldNotes.erase(std::remove_if(heldNotes.begin(), heldNotes.end(), [&](const HeldNote& hn) {
+            auto it = std::find_if(heldNotes.begin(), heldNotes.end(), [&](const HeldNote& hn) {
                 return hn.channel == ch && hn.noteNumber == note;
-            }), heldNotes.end());
+            });
+            if (it != heldNotes.end())
+            {
+                it->isHeld = false;
+                // Give short echo notes / pulses a grace period so the euclidean sequencer hits them
+                it->releaseGraceSamples = static_cast<int>(samplesPerStep * 2.0);
+            }
         }
         else
         {
             outputMidi.addEvent(msg, metadata.samplePosition);
         }
+    }
+
+    // Decay releaseGraceSamples for unheld notes
+    for (auto it = heldNotes.begin(); it != heldNotes.end(); )
+    {
+        if (!it->isHeld)
+        {
+            it->releaseGraceSamples -= ctx.numSamples;
+            if (it->releaseGraceSamples <= 0)
+            {
+                it = heldNotes.erase(it);
+                continue;
+            }
+        }
+        ++it;
     }
 
     if (heldNotes.empty())
@@ -143,17 +179,6 @@ void EuclideanBlock::processBlock(const juce::MidiBuffer& inputMidi,
         activeNotes.clear();
         return;
     }
-
-    double div = 0.25; // 1/16
-    int rIdx = static_cast<int>(std::round(rateDivision));
-    if (rIdx == 0) div = 1.0;
-    else if (rIdx == 1) div = 0.5;
-    else if (rIdx == 2) div = 0.25;
-    else if (rIdx == 3) div = 0.125;
-
-    double bpm = (ctx.bpm > 0.0) ? ctx.bpm : 120.0;
-    double quartersPerSample = (bpm / 60.0) / currentSampleRate;
-    double samplesPerStep = div * (60.0 / bpm) * currentSampleRate;
 
     // Decay active notes
     for (auto it = activeNotes.begin(); it != activeNotes.end(); )
@@ -197,6 +222,15 @@ void EuclideanBlock::processBlock(const juce::MidiBuffer& inputMidi,
             }
         }
     }
+}
+
+juce::String EuclideanBlock::getStatusDescription() const
+{
+    static const char* rateNames[] = { "1/4", "1/8", "1/16", "1/32" };
+    int r = juce::jlimit(0, 3, (int)std::round(rateDivision));
+    int p = (int)std::round(pulses);
+    int s = (int)std::round(steps);
+    return juce::String(p) + "/" + juce::String(s) + " PULSES • " + juce::String(rateNames[r]);
 }
 
 } // namespace MidiFlux

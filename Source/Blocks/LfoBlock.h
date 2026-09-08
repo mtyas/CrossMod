@@ -28,7 +28,11 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+    float getVisualizerValue() const override { return lastRawLfo; }
+
 private:
+    float lastRawLfo = 0.5f;
     float targetCC = 0.0f;        // 0: CC 1, 1: CC 11, 2: CC 74, 3: CC 71, 4: CC 10, 5: CC 7, 6: Pitch Bend
     float syncMode = 0.0f;        // 0: Tempo Synced, 1: Free Rate (Hz)
     float syncRate = 4.0f;        // Default 1/4 (index 4)

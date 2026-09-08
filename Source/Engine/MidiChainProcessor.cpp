@@ -78,13 +78,32 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
             pushActivityEvent(msg.getNoteNumber(), msg.getVelocity(), true, false);
         else if (msg.isNoteOff())
             pushActivityEvent(msg.getNoteNumber(), 0, false, false);
+        else if (msg.isController())
+            midiLearnManager.processMidiController(msg, *this);
     }
+
+    isDawPlayingFlag.store(ctx.isPlaying, std::memory_order_relaxed);
 
     if (masterBypassed.load(std::memory_order_relaxed))
         return;
 
-    ctx.rootKey = globalRootKey.load(std::memory_order_relaxed);
-    ctx.scaleType = globalScaleType.load(std::memory_order_relaxed);
+    {
+        std::unique_lock<std::recursive_mutex> lock(chainMutex, std::try_to_lock);
+        if (lock.owns_lock() && scaleProgression.isEnabled())
+        {
+            auto pb = scaleProgression.getPlaybackState(ctx.ppqPosition, ctx.timeSigNumerator, ctx.timeSigDenominator);
+            pb.isPlaying = ctx.isPlaying;
+            lastPlaybackState = pb;
+
+            ctx.rootKey = pb.activeRootKey;
+            ctx.scaleType = pb.activeScaleType;
+        }
+        else
+        {
+            ctx.rootKey = globalRootKey.load(std::memory_order_relaxed);
+            ctx.scaleType = globalScaleType.load(std::memory_order_relaxed);
+        }
+    }
 
     std::unique_lock<std::recursive_mutex> lock(chainMutex, std::try_to_lock);
     if (!lock.owns_lock())
@@ -104,11 +123,13 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
         }
     }
 
+    juce::MidiBuffer mainInput = midiBuffer;
     juce::MidiBuffer currentBuffer = midiBuffer;
     juce::MidiBuffer nextBuffer;
 
-    for (auto& block : blocks)
+    for (size_t i = 0; i < blocks.size(); ++i)
     {
+        auto& block = blocks[i];
         if (!block)
             continue;
 
@@ -124,8 +145,19 @@ void MidiChainProcessor::processMidi(juce::MidiBuffer& midiBuffer, BlockContext 
         }
 
         nextBuffer.clear();
-        block->processBlock(currentBuffer, nextBuffer, ctx);
-        currentBuffer.swapWith(nextBuffer);
+
+        if (block->getRoutingMode() == RoutingMode::Parallel && i > 0)
+        {
+            // Parallel routing: processes raw DAW input directly, output merges into chain
+            block->processBlock(mainInput, nextBuffer, ctx);
+            currentBuffer.addEvents(nextBuffer, 0, -1, 0);
+        }
+        else
+        {
+            // Series routing: processes output of previous module
+            block->processBlock(currentBuffer, nextBuffer, ctx);
+            currentBuffer.swapWith(nextBuffer);
+        }
     }
 
     midiBuffer.swapWith(currentBuffer);
@@ -197,6 +229,7 @@ void MidiChainProcessor::removeBlock(int index)
         if (index >= 0 && index < static_cast<int>(blocks.size()))
         {
             blocks.erase(blocks.begin() + index);
+            midiLearnManager.remapBlockRemoved(index);
         }
     }
 
@@ -214,6 +247,7 @@ void MidiChainProcessor::moveBlock(int fromIndex, int toIndex)
             auto moved = std::move(blocks[fromIndex]);
             blocks.erase(blocks.begin() + fromIndex);
             blocks.insert(blocks.begin() + toIndex, std::move(moved));
+            midiLearnManager.remapBlockMoved(fromIndex, toIndex);
         }
     }
 
@@ -234,12 +268,66 @@ void MidiChainProcessor::clearAllBlocks()
 
 void MidiChainProcessor::randomizeAll()
 {
-    std::lock_guard<std::recursive_mutex> lock(chainMutex);
-    for (auto& block : blocks)
+    randomizeRack(true);
+}
+
+void MidiChainProcessor::randomizeRack(bool randomizeModules)
+{
     {
-        if (block)
-            block->randomize();
+        std::lock_guard<std::recursive_mutex> lock(chainMutex);
+        FastRandom rng;
+
+        if (randomizeModules)
+        {
+            blocks.clear();
+
+            // Choose between 1 and 6 modules
+            int count = rng.nextInt(1, 6);
+
+            static const std::vector<const char*> allTypes = {
+                "arpeggiator", "chords", "euclidean", "ratchet", "probability",
+                "scale_quantize", "harmonizer", "transpose", "transform",
+                "time_quantize", "humanizer", "delay",
+                "lfo", "mutator", "mapper", "filter"
+            };
+
+            std::vector<const char*> pool = allTypes;
+            // Fisher-Yates shuffle
+            for (int i = static_cast<int>(pool.size()) - 1; i > 0; --i)
+            {
+                int j = rng.nextInt(0, i);
+                std::swap(pool[i], pool[j]);
+            }
+
+            for (int i = 0; i < count; ++i)
+            {
+                auto blk = MidiBlockFactory::createBlock(pool[i]);
+                if (blk)
+                {
+                    blk->prepare(currentSampleRate, currentBlockSize);
+                    blk->randomize();
+                    blocks.push_back(std::move(blk));
+                }
+            }
+        }
+        else
+        {
+            for (auto& block : blocks)
+            {
+                if (block)
+                    block->randomize();
+            }
+        }
     }
+
+    if (onChainModified)
+        onChainModified();
+}
+
+ScaleProgression::PlaybackState MidiChainProcessor::getLastPlaybackState() const
+{
+    std::lock_guard<std::recursive_mutex> lock(const_cast<std::recursive_mutex&>(chainMutex));
+    return lastPlaybackState;
 }
 
 juce::ValueTree MidiChainProcessor::getState() const
@@ -248,6 +336,9 @@ juce::ValueTree MidiChainProcessor::getState() const
     root.setProperty("rootKey", globalRootKey.load(), nullptr);
     root.setProperty("scaleType", globalScaleType.load(), nullptr);
     root.setProperty("masterBypassed", masterBypassed.load(), nullptr);
+
+    root.addChild(scaleProgression.getState(), -1, nullptr);
+    root.addChild(midiLearnManager.getState(), -1, nullptr);
 
     juce::ValueTree blocksTree("Blocks");
     for (const auto& block : blocks)
@@ -269,6 +360,19 @@ void MidiChainProcessor::setState(const juce::ValueTree& vt)
             setGlobalScaleType(static_cast<int>(vt.getProperty("scaleType")));
         if (vt.hasProperty("masterBypassed"))
             setMasterBypassed(static_cast<bool>(vt.getProperty("masterBypassed")));
+
+        auto seqTree = vt.getChildWithName("ScaleProgression");
+        if (seqTree.isValid())
+        {
+            std::lock_guard<std::recursive_mutex> lock(chainMutex);
+            scaleProgression.setState(seqTree);
+        }
+
+        auto learnTree = vt.getChildWithName("MidiMappings");
+        if (learnTree.isValid())
+        {
+            midiLearnManager.setState(learnTree);
+        }
 
         auto blocksTree = vt.getChildWithName("Blocks");
         if (blocksTree.isValid())

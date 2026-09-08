@@ -199,6 +199,7 @@ void LfoBlock::processBlock(const juce::MidiBuffer& inputMidi,
         {
             samplesSinceLastOutput = 0;
             float rawLfo = computeLfoValue(lfoPhase, wave); // 0.0 to 1.0
+            lastRawLfo = rawLfo;
 
             if (isPitchBend)
             {
@@ -230,6 +231,17 @@ void LfoBlock::processBlock(const juce::MidiBuffer& inputMidi,
             }
         }
     }
+}
+
+juce::String LfoBlock::getStatusDescription() const
+{
+    static const char* targetNames[] = { "CC 1 Mod", "CC 11 Exp", "CC 74 Cutoff", "CC 71 Reso", "CC 10 Pan", "CC 7 Vol", "Pitch Bend" };
+    static const char* rateNames[] = { "4 Bars", "2 Bars", "1 Bar", "1/2", "1/4", "1/8", "1/16", "1/8T", "1/16T", "1/8D", "1/16D" };
+    int t = juce::jlimit(0, 6, (int)std::round(targetCC));
+    if (syncMode > 0.5f)
+        return juce::String(targetNames[t]) + " • " + juce::String(freeRateHz, 2) + " Hz";
+    int r = juce::jlimit(0, 10, (int)std::round(syncRate));
+    return juce::String(targetNames[t]) + " • " + juce::String(rateNames[r]);
 }
 
 } // namespace MidiFlux

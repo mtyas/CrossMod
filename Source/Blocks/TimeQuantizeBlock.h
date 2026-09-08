@@ -30,6 +30,9 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    bool requiresDawPlayback() const override { return snapStrength > 0.01f; }
+    juce::String getStatusDescription() const override;
+
 private:
     float gridDivision = 6.0f;     // Default 6 = 1/16
     float snapStrength = 1.0f;     // 0.0 = Off, 1.0 = 100% Snap

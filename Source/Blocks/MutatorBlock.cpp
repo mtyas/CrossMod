@@ -160,4 +160,9 @@ void MutatorBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String MutatorBlock::getStatusDescription() const
+{
+    return "Chance: " + juce::String(static_cast<int>(pitchMutateChance * 100.0f)) + "% | Range: ±" + juce::String(static_cast<int>(pitchRange)) + "st";
+}
+
 } // namespace MidiFlux

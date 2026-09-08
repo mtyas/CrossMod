@@ -29,6 +29,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float pitchMutateChance = 0.35f; // 0.0 - 1.0
     float pitchRange = 5.0f;         // 1 - 12 semitones

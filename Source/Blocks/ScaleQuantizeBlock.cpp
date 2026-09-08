@@ -141,4 +141,13 @@ void ScaleQuantizeBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String ScaleQuantizeBlock::getStatusDescription() const
+{
+    int k = juce::jlimit(0, 11, (int)std::round(rootKey));
+    int s = juce::jlimit(0, (int)NumScales - 1, (int)std::round(scaleType));
+    juce::String txt = (useGlobalScale > 0.5f ? "GLOBAL: " : "KEY: ");
+    txt += juce::String(ScaleTheory::getNoteName(k)) + " " + ScaleTheory::getScaleDef(s).name;
+    return txt;
+}
+
 } // namespace MidiFlux

@@ -132,4 +132,9 @@ void FilterBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String FilterBlock::getStatusDescription() const
+{
+    return ScaleTheory::noteName(static_cast<int>(lowNote)) + " to " + ScaleTheory::noteName(static_cast<int>(highNote)) + " | Vel: " + juce::String(static_cast<int>(minVel)) + "-" + juce::String(static_cast<int>(maxVel));
+}
+
 } // namespace MidiFlux

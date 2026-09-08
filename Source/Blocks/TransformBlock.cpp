@@ -151,4 +151,17 @@ void TransformBlock::processBlock(const juce::MidiBuffer& inputMidi,
     }
 }
 
+juce::String TransformBlock::getStatusDescription() const
+{
+    juce::String s = "";
+    if (pitchInvert > 0.5f)
+        s += "Invert around " + ScaleTheory::noteName(static_cast<int>(pivotNote));
+    else
+        s += "No Pitch Invert";
+
+    if (invertVelocity > 0.5f)
+        s += " | Invert Vel";
+    return s;
+}
+
 } // namespace MidiFlux

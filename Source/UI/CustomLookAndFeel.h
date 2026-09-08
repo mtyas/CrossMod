@@ -30,6 +30,8 @@ public:
     void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown,
                       int buttonX, int buttonY, int buttonW, int buttonH,
                       juce::ComboBox& box) override;
+    juce::Font getComboBoxFont(juce::ComboBox& box) override;
+    void positionComboBoxText(juce::ComboBox& box, juce::Label& label) override;
 
     void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override;
     void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,

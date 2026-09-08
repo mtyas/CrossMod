@@ -2,6 +2,8 @@
 
 #include "../Common/MidiBlock.h"
 #include "../Common/MidiBlockFactory.h"
+#include "../Common/ScaleProgression.h"
+#include "MidiLearnManager.h"
 #include <juce_core/juce_core.h>
 #include <vector>
 #include <memory>
@@ -41,6 +43,10 @@ public:
     void moveBlock(int fromIndex, int toIndex);
     void clearAllBlocks();
     void randomizeAll();
+    void randomizeRack(bool randomizeModules = true);
+
+    bool isDawPlaying() const { return isDawPlayingFlag.load(std::memory_order_relaxed); }
+    void setIsDawPlaying(bool p) { isDawPlayingFlag.store(p, std::memory_order_relaxed); }
 
     // Global Key / Scale
     int getGlobalRootKey() const { return globalRootKey.load(std::memory_order_relaxed); }
@@ -51,6 +57,15 @@ public:
 
     bool isMasterBypassed() const { return masterBypassed.load(std::memory_order_relaxed); }
     void setMasterBypassed(bool b) { masterBypassed.store(b, std::memory_order_relaxed); }
+
+    // Scale Progression Sequencer
+    ScaleProgression& getScaleProgression() { return scaleProgression; }
+    const ScaleProgression& getScaleProgression() const { return scaleProgression; }
+    ScaleProgression::PlaybackState getLastPlaybackState() const;
+
+    // MIDI Learn Manager
+    MidiLearnManager& getMidiLearnManager() { return midiLearnManager; }
+    const MidiLearnManager& getMidiLearnManager() const { return midiLearnManager; }
 
     // Serialization to ValueTree
     juce::ValueTree getState() const;
@@ -66,12 +81,18 @@ private:
     std::recursive_mutex chainMutex;
     std::vector<std::unique_ptr<MidiBlock>> blocks;
 
+    MidiLearnManager midiLearnManager;
+
     double currentSampleRate = 44100.0;
     int currentBlockSize = 512;
 
     std::atomic<int> globalRootKey{ 0 };      // C
     std::atomic<int> globalScaleType{ 0 };    // Major
     std::atomic<bool> masterBypassed{ false };
+    std::atomic<bool> isDawPlayingFlag{ false };
+
+    ScaleProgression scaleProgression;
+    ScaleProgression::PlaybackState lastPlaybackState;
 
     // Real-time activity ring buffer for UI visualization
     static constexpr int activityBufferSize = 256;

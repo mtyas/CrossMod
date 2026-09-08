@@ -29,6 +29,8 @@ public:
     float getParameterValue(int index) const override;
     void setParameterValue(int index, float value) override;
 
+    juce::String getStatusDescription() const override;
+
 private:
     float gateProb = 0.85f;     // 0.0 - 1.0 (85% pass rate)
     float velMin = 40.0f;       // 1 - 127
