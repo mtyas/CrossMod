@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-# MidiFlux Linux Build Script
+# CrossMod Linux Build Script
 # Installs development dependencies (Debian/Ubuntu) and compiles VST3, CLAP, and Standalone.
 
 echo "=========================================================="
-echo "  Building MidiFlux for Linux (x86_64)                    "
+echo "  Building CrossMod for Linux (x86_64)                    "
 echo "=========================================================="
 
 # Check for required packages on Debian/Ubuntu systems
@@ -25,7 +25,9 @@ if command -v apt-get &> /dev/null; then
     libxrandr-dev \
     libxrender-dev \
     libfontconfig1-dev \
-    libfreetype6-dev
+    libfreetype6-dev \
+    libcurl4-openssl-dev \
+    libgtk-3-dev
 fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -39,18 +41,18 @@ echo ">> Configuring CMake for Linux..."
 cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
 
 # 2. Compile in Parallel
-echo ">> Compiling plugins & standalone app..."
-cmake --build "$BUILD_DIR" --config Release --parallel
+echo ">> Compiling CrossMod plugins, standalone app & tests..."
+cmake --build "$BUILD_DIR" --config Release --target CrossMod_All CrossMod_CLAP CrossModTests --parallel
 
 # 3. Run Automated Tests
 echo ">> Running unit verification tests..."
-"$BUILD_DIR/MidiFluxTests"
+"$BUILD_DIR/CrossModTests"
 
 # 4. Display Outputs
 echo "=========================================================="
 echo "  Linux Build Complete! Output files:                     "
 echo "=========================================================="
-echo "VST3:       $BUILD_DIR/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3"
-echo "CLAP:       $BUILD_DIR/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap"
-echo "Standalone: $BUILD_DIR/MidiFlux_artefacts/Release/Standalone/MidiFlux"
+echo "VST3:       $BUILD_DIR/CrossMod_artefacts/Release/VST3/CrossMod.vst3"
+echo "CLAP:       $BUILD_DIR/CrossMod_artefacts/Release/CLAP/CrossMod.clap"
+echo "Standalone: $BUILD_DIR/CrossMod_artefacts/Release/Standalone/CrossMod"
 echo "=========================================================="

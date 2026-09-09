@@ -1,4 +1,4 @@
-name: Build MidiFlux (Windows, macOS, Linux)
+name: Build CrossMod (Windows, macOS, Linux)
 
 on:
   push:
@@ -11,20 +11,23 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            artifact_name: MidiFlux-Windows
+            artifact_name: CrossMod-Windows
             build_dir: build
             cmake_flags: ""
           - os: macos-14
-            artifact_name: MidiFlux-macOS-Universal
+            artifact_name: CrossMod-macOS-Universal
             build_dir: build
             cmake_flags: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"'
           - os: ubuntu-22.04
-            artifact_name: MidiFlux-Linux-x64
+            artifact_name: CrossMod-Linux-x64
             build_dir: build
             cmake_flags: ""
 
@@ -51,7 +54,9 @@ jobs:
             libxrandr-dev \
             libxrender-dev \
             libfontconfig1-dev \
-            libfreetype6-dev
+            libfreetype6-dev \
+            libcurl4-openssl-dev \
+            libgtk-3-dev
 
       - name: Configure CMake
         run: |
@@ -61,37 +66,53 @@ jobs:
 
       - name: Build Plugins & Standalone
         run: |
-          cmake --build ${{ matrix.build_dir }} --config Release --parallel
+          cmake --build ${{ matrix.build_dir }} --config Release --target CrossMod_All CrossMod_CLAP CrossModTests --parallel
 
       - name: Run Verification Tests
         run: |
-          ${{ matrix.build_dir }}/MidiFluxTests || ${{ matrix.build_dir }}/Release/MidiFluxTests.exe
+          if [ -f "${{ matrix.build_dir }}/Release/CrossModTests.exe" ]; then
+            "${{ matrix.build_dir }}/Release/CrossModTests.exe"
+          elif [ -f "${{ matrix.build_dir }}/CrossModTests" ]; then
+            "${{ matrix.build_dir }}/CrossModTests"
+          elif [ -f "${{ matrix.build_dir }}/CrossModTests_artefacts/Release/CrossModTests" ]; then
+            "${{ matrix.build_dir }}/CrossModTests_artefacts/Release/CrossModTests"
+          else
+            echo "Searching for CrossModTests binary..."
+            TEST_BIN=$(find ${{ matrix.build_dir }} -type f \( -name "CrossModTests" -o -name "CrossModTests.exe" \) | head -n 1)
+            if [ -n "$TEST_BIN" ]; then
+              "$TEST_BIN"
+            else
+              echo "Error: CrossModTests executable not found."
+              exit 1
+            fi
+          fi
 
       - name: Stage Artifacts (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path artifacts-windows
-          Copy-Item -Recurse -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-windows/
-          Copy-Item -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-windows/
-          Copy-Item -Force "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux.exe" artifacts-windows/
+          mkdir -p artifacts-windows
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.vst3" -exec cp -R {} artifacts-windows/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type f -name "CrossMod.clap" -exec cp {} artifacts-windows/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type f -name "CrossMod.exe" -exec cp {} artifacts-windows/ \; 2>/dev/null || true
 
       - name: Stage Artifacts (macOS)
         if: runner.os == 'macOS'
         run: |
           mkdir -p artifacts-macos
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-macos/ 2>/dev/null || true
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-macos/ 2>/dev/null || true
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/AU/MidiFlux.component" artifacts-macos/ 2>/dev/null || true
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux.app" artifacts-macos/ 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.vst3" -exec cp -R {} artifacts-macos/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type f -name "CrossMod.clap" -exec cp {} artifacts-macos/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.clap" -exec cp -R {} artifacts-macos/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.component" -exec cp -R {} artifacts-macos/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.app" -exec cp -R {} artifacts-macos/ \; 2>/dev/null || true
 
       - name: Stage Artifacts (Linux)
         if: runner.os == 'Linux'
         run: |
           mkdir -p artifacts-linux
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/VST3/MidiFlux.vst3" artifacts-linux/ 2>/dev/null || true
-          cp -R "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/CLAP/MidiFlux.clap" artifacts-linux/ 2>/dev/null || true
-          cp "${{ matrix.build_dir }}/MidiFlux_artefacts/Release/Standalone/MidiFlux" artifacts-linux/ 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.vst3" -exec cp -R {} artifacts-linux/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type f -name "CrossMod.clap" -exec cp {} artifacts-linux/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type d -name "CrossMod.clap" -exec cp -R {} artifacts-linux/ \; 2>/dev/null || true
+          find "${{ matrix.build_dir }}/CrossMod_artefacts" -type f -name "CrossMod" -exec cp {} artifacts-linux/ \; 2>/dev/null || true
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
