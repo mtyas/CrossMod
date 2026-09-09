@@ -18,7 +18,7 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
 
 ## 📸 Overview & Interface
 
-![CrossMod Synthesizer](docs/images/crossmod_screenshot.png)
+<img src="docs/images/crossmod_screenshot.png" alt="CrossMod Synthesizer Interface" width="100%">
 
 ```
 +----------------------------------------------------------------------------------------------------+
