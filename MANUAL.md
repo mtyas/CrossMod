@@ -1,449 +1,281 @@
-# 🎹 MIDIFLUX — USER MANUAL
-### Generative MIDI Rack & Harmonic Sequencer
+# 🎛️ CROSSMOD SYNTHESIZER — USER MANUAL
 ### Developed by **mtyas** | JUCE 8 Framework | VST3 • CLAP • Standalone (Windows 64-bit)
 
 ---
 
 ## 📖 TABLE OF CONTENTS
 1. [Introduction & Philosophy](#1-introduction--philosophy)
-2. [Installation & Formats](#2-installation--formats)
-3. [Signal Flow & Processing Topology](#3-signal-flow--processing-topology)
-4. [The Modular Rack & Global Controls](#4-the-modular-rack--global-controls)
-   - 4.1 [Header Controls & Dice Randomizer](#41-header-controls--dice-randomizer)
-   - 4.2 [Rack Layout & Module Drag-and-Drop](#42-rack-layout--module-drag-and-drop)
-   - 4.3 [Series vs. Parallel Routing](#43-series-vs-parallel-routing)
-   - 4.4 [Solo, Bypass & Clean Release Logic](#44-solo-bypass--clean-release-logic)
-   - 4.5 [DAW Transport & Sync Status](#45-daw-transport--sync-status)
-5. [Scale Progression Sequencer](#5-scale-progression-sequencer)
-   - 5.1 [Timeline & Block Editor](#51-timeline--block-editor)
-   - 5.2 [DAW Song Synchronization](#52-daw-song-synchronization)
-   - 5.3 [Progression Presets & File Management](#53-progression-presets--file-management)
-6. [The 16 Processing Modules (Complete Reference)](#6-the-16-processing-modules-complete-reference)
-   - 6.1 [Arpeggiator](#61-arpeggiator)
-   - 6.2 [Chord Generator](#62-chord-generator)
-   - 6.3 [Euclidean Rhythm Generator](#63-euclidean-rhythm-generator)
-   - 6.4 [Harmonizer](#64-harmonizer)
-   - 6.5 [MIDI Delay & Echo](#65-midi-delay--echo)
-   - 6.6 [Ratchet / Note Burst](#66-ratchet--note-burst)
-   - 6.7 [Humanizer](#67-humanizer)
-   - 6.8 [Scale Quantizer](#68-scale-quantizer)
-   - 6.9 [Time Quantizer](#69-time-quantizer)
-   - 6.10 [LFO / CC Modulator](#610-lfo--cc-modulator)
-   - 6.11 [Transform (Invert & Mirror)](#611-transform-invert--mirror)
-   - 6.12 [Probability / Gate](#612-probability--gate)
-   - 6.13 [Transpose](#613-transpose)
-   - 6.14 [Mutator](#614-mutator)
-   - 6.15 [Filter (Key & Velocity Splitter)](#615-filter-key--velocity-splitter)
-   - 6.16 [Mapper / Remapper](#616-mapper--remapper)
-7. [Virtual Performance Keyboard](#7-virtual-performance-keyboard)
-8. [Preset Management & State Persistence](#8-preset-management--state-persistence)
-9. [MIDI Learn & Hardware Mapping](#9-midi-learn--hardware-mapping)
-10. [Under the Hood: Zero-Allocation Real-Time Engine](#10-under-the-hood-zero-allocation-real-time-engine)
-11. [Troubleshooting & FAQ](#11-troubleshooting--faq)
+2. [Installation & Supported Formats](#2-installation--supported-formats)
+3. [Signal Flow & Block Diagram](#3-signal-flow--block-diagram)
+4. [Oscillator Core, Waveforms & 3rd Sub Oscillator](#4-oscillator-core-waveforms--3rd-sub-oscillator)
+5. [Cross-Modulation Engine (5 Modes)](#5-cross-modulation-engine-5-modes)
+6. [Real-Time Lissajous CRT Oscilloscope](#6-real-time-lissajous-crt-oscilloscope)
+7. [Resonant Filter Section (VCF) & Exact 1V/Oct Key Tracking](#7-resonant-filter-section-vcf--exact-1voct-key-tracking)
+8. [VCA, Warmth Saturation & Stereo Imaging](#8-vca-warmth-saturation--stereo-imaging)
+9. [Voice Modes (7 Topologies) & Dual Independent Glide](#9-voice-modes-7-topologies--dual-independent-glide)
+10. [Audio-Rate LFOs & ADSR Envelopes](#10-audio-rate-lfos--adsr-envelopes)
+11. [8-Slot Modulation Matrix & Tuned LFO Tracking](#11-8-slot-modulation-matrix--tuned-lfo-tracking)
+12. [Studio Multi-Effects Chain (Order Reconfigurable)](#12-studio-multi-effects-chain-order-reconfigurable)
+13. [Preset Management & 11 Factory Presets](#13-preset-management--11-factory-presets)
+14. [MIDI Learn & Hardware Controller Integration](#14-midi-learn--hardware-controller-integration)
+15. [Sound Design Recipes & Pro Tips](#15-sound-design-recipes--pro-tips)
+16. [Complete Parameter & MIDI Specification](#16-complete-parameter--midi-specification)
 
 ---
 
 ## 1. Introduction & Philosophy
 
-**MidiFlux** is an advanced modular MIDI transformation and generative sequencing environment created by **mtyas**. Designed to bridge expressive live performance, intelligent algorithmic composition, and DAW song automation, MidiFlux acts as an intelligent neural layer between your keyboard/controller and your favorite software or hardware synthesizers.
+**CrossMod** is an analog-inspired, cross-modulation synthesizer designed by **mtyas**. Rather than relying on static wave-tables or sample playback, CrossMod treats its oscillators and voice stages as dynamic, coupled physical and mathematical systems. 
 
-Whether transforming single-finger notes into intricate neoclassical arpeggios, introducing subtle human micro-timing and loose grooves to rigid MIDI sequences, or driving harmonic song structures using the integrated Scale Progression Sequencer, MidiFlux provides a flexible rack environment where modules can be re-ordered, combined, and routed in series or parallel.
-
-### Key Capabilities:
-- **16 Modular Processing Blocks**: Covering algorithmic arpeggiation, polyphonic voicing, euclidean polyrhythms, generative micro-mutation, swing/time quantization, and MIDI CC automation.
-- **Scale Progression Sequencer**: Automate musical scale and root changes throughout your DAW project timeline in synchronized blocks (from $1/4$ bar up to $16$ bars).
-- **Flexible Signal Architecture**: Choose between traditional **Series** daisy-chaining and **Parallel** routing per module for complex split-stream layering.
-- **Zero-Allocation Audio Engine**: Pre-allocated scratch buffers, lock-free visual telemetry, and non-blocking thread isolation ensure rock-solid stability and zero audio dropouts.
-- **Hardware Integration**: Comprehensive MIDI Learn with persistent XML mappings across every knob and toggle.
+With **2x sub-sample oversampling**, **PolyBLEP anti-aliasing**, **zero-latency topology-preserving state-variable filtering**, and **5 distinct cross-modulation algorithms**, CrossMod spans an immense sonic continuum: from ultra-clean 80s FM EPianos and glassy bells to screaming cybernetic leads, organic acoustic soundboard simulations, and evolving generative drones.
 
 ---
 
-## 2. Installation & Formats
+## 2. Installation & Supported Formats
 
-MidiFlux is compiled natively for 64-bit Windows systems in the following standard formats:
+CrossMod is distributed as a universal 64-bit binary across three standard formats:
 
-| Format | File Name | Typical Host Location | Description |
-| :--- | :--- | :--- | :--- |
-| **VST3** | `MidiFlux.vst3` | `C:\Program Files\Common Files\VST3\` | Universal VST3 MIDI Processor / Instrument plugin compatible with Reaper, Ableton Live, Cubase, Bitwig, FL Studio, Studio One. |
-| **CLAP** | `MidiFlux.clap` | `C:\Program Files\Common Files\CLAP\` | High-performance modern plugin format with native parameter modulation and sample-accurate automation. |
-| **Standalone** | `MidiFlux.exe` | Portable Executable | Standalone application featuring direct Windows MIDI In / Out device routing for live performance without a DAW. |
+| Format | Output Location | Default Plugin Directory |
+| :--- | :--- | :--- |
+| **CLAP** | `build\CrossMod_artefacts\Release\CLAP\CrossMod.clap` | `C:\Program Files\Common Files\CLAP\` |
+| **VST3** | `build\CrossMod_artefacts\Release\VST3\CrossMod.vst3` | `C:\Program Files\Common Files\VST3\` |
+| **Standalone** | `build\CrossMod_artefacts\Release\Standalone\CrossMod.exe` | Any folder (Portable `.exe` with virtual MIDI/Audio device selector) |
 
 ---
 
-## 3. Signal Flow & Processing Topology
-
-MidiFlux processes incoming MIDI messages through an ordered pipeline of processing modules before forwarding the enriched MIDI stream to the host DAW track or external synthesizers:
+## 3. Signal Flow & Block Diagram
 
 ```mermaid
 graph TD
-    DAW_IN["DAW / Hardware MIDI Input"] --> MonitorIn["Input MIDI Activity Monitor"]
-    VKeys["Virtual Keyboard & UI Note Injection"] --> MonitorIn
+    MIDI["MIDI Note & CC In"] --> VoiceMgr["Voice Manager (Mono / Unison / Poly / 4 X-Voice Coupling Algos)"]
     
-    MonitorIn --> RawBuffer["Pre-allocated Input Scratch Buffer (Parallel Bus)"]
-    
-    subgraph "MidiFlux Rack Pipeline"
-        RawBuffer --> Module1["Module 1 (Series / Parallel)"]
-        Module1 --> Module2["Module 2 (Series / Parallel)"]
-        Module2 --> Module3["... Module N (Up to 6 Blocks)"]
+    subgraph "Per Voice (Up to 16 Voices)"
+        VoiceMgr --> Osc1["Oscillator 1 (Left Panned)"]
+        VoiceMgr --> Osc2["Oscillator 2 (Right Panned)"]
+        VoiceMgr --> SubOsc["3rd Sub Osc (-1 / -2 Oct, Center, Isolated)"]
+        
+        Osc1 <-->|"PolyBLEP Cross-Mod (FM/PM/TZFM/AM/Ring)"| Osc2
+        VoiceMgr -. "Inter-Voice Coupling" .-> Osc1
+        
+        Osc1 --> StereoPanner["Stereo Separation & Width (0 - 100%)"]
+        Osc2 --> StereoPanner
+        SubOsc --> StereoPanner
+        
+        StereoPanner --> VCF["Dual 24dB/12dB TPT SVF Filter (KeyTracked 1V/Oct)"]
+        VCF --> VCA["VCA & Analog Warmth Saturation"]
     end
     
-    Module3 --> MonitorOut["Output MIDI Activity Monitor"]
-    MonitorOut --> DAW_OUT["Host Track MIDI Output / VSTi Synth"]
-    
-    subgraph "Harmonic Engine"
-        Transport["DAW Transport / Playhead (PPQ)"] --> ScaleSeq["Scale Progression Sequencer"]
-        ScaleSeq -. "Active Root & Scale Override" .-> Module1
-        ScaleSeq -. "Active Root & Scale Override" .-> Module2
-        ScaleSeq -. "Active Root & Scale Override" .-> Module3
-    end
+    VCA --> MasterSum["Master Stereo Bus & Pan"]
+    MasterSum --> Visualizer["CRT Vector Lissajous Scope (Pre-FX / Post-FX / X-Mod)"]
+    MasterSum --> FXChain["Studio Multi-FX (Modulation -> Delay -> Reverb Reorderable)"]
+    FXChain --> Out["Master Output & Peak VU Meters"]
 ```
 
-### Signal Highlights:
-1. **Virtual Key Injection**: Notes played on the lower interactive keyboard or injected via UI chord-hold enter the processing stream with non-blocking thread safety.
-2. **Harmonic Sync**: The global Scale Sequencer broadcasts the current musical Root Note and Scale Type to all diatonic modules (Scale Quantizer, Arpeggiator, Chord Generator, Harmonizer).
-3. **Double Buffering**: Events flow between modules using zero-copy buffer swaps, keeping latency below detectable thresholds.
+---
+
+## 4. Oscillator Core, Waveforms & 3rd Sub Oscillator
+
+### Oscillator 1 (Left Channel Default)
+* **Waveform**: Select between **Sine**, **Triangle**, **Saw**, or **Square**. All shapes feature bandlimited **PolyBLEP anti-aliasing** to eliminate high-frequency aliasing clicks.
+* **Coarse Tune**: Pitch offset in semitones ($-36\text{ st}$ to $+36\text{ st}$).
+* **Fine Tune**: Fine pitch offset in cents ($-100\text{ ct}$ to $+100\text{ ct}$).
+* **Level**: Discrete output level ($0.0 - 1.0$).
+
+### Oscillator 2 (Right Channel Default)
+* **Waveform**: Select between **Sine**, **Triangle**, **Saw**, or **Square**.
+* **Coarse Tune**: Pitch offset in semitones ($-36\text{ st}$ to $+36\text{ st}$).
+* **Fine Tune**: Fine pitch offset in cents ($-100\text{ ct}$ to $+100\text{ ct}$).
+* **Level**: Discrete output level ($0.0 - 1.0$).
+
+### 3rd Sub Oscillator (Center Channel — Isolated Direct Path)
+* **Waveform**: Selectable between **Sine**, **Triangle**, **Saw**, and **Square**.
+* **Octave Range**: **-1 Octave** ($-12\text{ st}$) or **-2 Octaves** ($-24\text{ st}$) below Oscillator 1.
+* **Sub Level**: Dedicated sub volume control ($0.0 - 1.0$).
+* **Direct Path Isolation**: The Sub Oscillator feeds directly into the VCF pre-filter mix at center pan. It does **not** enter the cross-modulation loop, guaranteeing clean, undistorted sub-bass foundations under wild cross-modulation patches.
 
 ---
 
-## 4. The Modular Rack & Global Controls
+## 5. Cross-Modulation Engine (5 Modes)
 
-### 4.1 Header Controls & Dice Randomizer
-The top header provides immediate access to essential session-wide settings:
-- **Plugin Logo / Brand**: Displays the **mtyas MidiFlux** signature.
-- **Master Bypass**: Toggles plugin bypass. When bypassed, incoming MIDI is passed through directly to output untouched.
-- **Global Root & Scale Dropdowns**: Sets the default musical key (e.g., *D Dorian*, *F# Minor*, *C Lydian*) used by all harmonic modules when the Scale Progression Sequencer is off.
-- **Scale Sequencer Toggle**: Expands the Scale Progression Sequencer strip directly below the header.
-- **Panic Button (!)**: Instantly issues `All Notes Off` (CC 123) and `All Sound Off` (CC 120) across all 16 MIDI channels, immediately silencing any hung notes.
-- **Dice Randomizer (🎲)**: Generates an entirely fresh, musically coherent rack configuration. Clears existing modules and spawns between 1 and 6 distinct modules with randomized parameters and creative routings.
+CrossMod provides bidirectional modulation where Osc 1 can modulate Osc 2 and Osc 2 can simultaneously modulate Osc 1.
 
-### 4.2 Rack Layout & Module Drag-and-Drop
-The central rack hosts up to 6 simultaneous modules:
-- **Add Module (+)**: Displays a categorized popup menu (*Arp/Rhythm*, *Harmonic*, *Generative*, *Utility*) allowing you to insert any of the 16 available blocks.
-- **Drag-and-Drop Reordering**: Click and drag any module card by its top header bar to reorder its position in the processing chain. The remaining cards dynamically shift to accommodate the new layout.
-- **Card Controls**:
-  - **Power Toggle**: Enables or disables the individual module.
-  - **Solo Button (S)**: Isolates the module; all other modules in the rack are bypassed.
-  - **Routing Switch (SER / PAR)**: Toggles the block's input source between Series and Parallel.
-  - **Delete Button (×)**: Removes the module from the rack.
+| Mode | Name | Character & Sound Description |
+| :---: | :--- | :--- |
+| **1** | **FM (Frequency Modulation)** | Analog exponential frequency modulation. Generates rich sidebands, acoustic growls, and brassy harmonic shifts. |
+| **2** | **PM (Phase Modulation)** | True Yamaha DX-style linear phase modulation ($\sin(\theta + k \cdot x)$). Produces bright, punchy, crystalline bells, Rhodes, and glassy plucks. |
+| **3** | **TZ-FM (Through-Zero FM)** | Linear Through-Zero FM that reverses phase progression when modulated frequency crosses zero. Retains fundamental pitch stability under extreme modulation depths. |
+| **4** | **AM (Amplitude Modulation)** | Classic amplitude modulation. Imparts harmonic body coloration, formant vocal textures, and tremolos without altering carrier pitch. |
+| **5** | **Ring Mod (Ring Modulation)** | True 4-quadrant four-multiplier ring modulation. Produces clangorous metallic tones, sci-fi chimes, robotic speech timbres, and harsh industrial textures. |
 
-### 4.3 Series vs. Parallel Routing
-Each module can be independently switched between two routing topologies:
-- **Series (`SER`)**: The module receives the output of the preceding block. Changes are cumulative (e.g., `Chord Generator -> Arpeggiator` turns triggered chords into arpeggiated patterns).
-- **Parallel (`PAR`)**: The module bypasses preceding processing blocks and receives the raw, untouched MIDI input directly from the DAW/keyboard. Its output is then merged into the main chain. This enables parallel layering (e.g., keeping an untouched lead melody while a parallel Harmonizer generates accompanying voices).
-
-### 4.4 Solo, Bypass & Clean Release Logic
-A major problem in modular MIDI processors is "stuck notes" occurring when a module is bypassed while notes are actively playing. MidiFlux solves this with **Intelligent Bypass Flushing**:
-- When any block is bypassed (or de-soloed), MidiFlux automatically interrogates the block's internal active note registry and dispatches matching `Note Off` messages immediately into the stream.
-- Deactivating an Arpeggiator, Chord Generator, or Delay module will never leave a synth sounding indefinitely.
-
-### 4.5 DAW Transport & Sync Status
-Modules that rely on rhythmic timing (such as Euclidean rhythms or Beat-synced LFOs) display an ambient notice when the DAW transport is halted:
-- An unobtrusive message `Requires DAW Playhead` is shown when host playback is stopped, indicating that starting playback will engage full beat synchronization.
+* **1 $\to$ 2 Depth**: Controls the amount of modulation from Osc 1 into Osc 2.
+* **2 $\to$ 1 Depth**: Controls the amount of modulation from Osc 2 into Osc 1.
 
 ---
 
-## 5. Scale Progression Sequencer
+## 6. Real-Time Lissajous CRT Oscilloscope
 
-The **Scale Progression Sequencer** enables dynamic harmonic changes across your song timeline, eliminating the need to automate scale parameters manually across multiple tracks.
+Positioned between the cross-mod knobs, the custom CRT reticle oscilloscope provides pure 2D Lissajous phase monitoring:
 
-```
-[ Bar 1.0 - 5.0: C Major (4 Bars) ] ──▶ [ Bar 5.0 - 7.0: A Minor (2 Bars) ] ──▶ [ Bar 7.0 - 8.0: F Lydian (1 Bar) ]
-```
-
-### 5.1 Timeline & Block Editor
-- **Add Block (+)**: Appends a harmonic step to the timeline.
-- **Root Key Dropdown**: Selects the root note (C, C#, D, ... B).
-- **Scale Dropdown**: Selects from 14 musical modes (Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Harmonic Minor, Melodic Minor, Pentatonic Major/Minor, Blues, Whole Tone, Diminished).
-- **Duration**: Configurable in musical increments from **1/4 Bar** (1 beat) up to **16 Bars** ($1/4$, $1/2$, $1$, $2$, $4$, $8$, $16$ bars).
-- **Loop Toggle**: When enabled, the progression loops indefinitely once the playhead reaches the end of the last block.
-
-### 5.2 DAW Song Synchronization
-The sequencer links directly to the host's playhead position (PPQ - Pulses Per Quarter Note). As your DAW plays through the timeline:
-- The sequencer calculates the active block based on absolute song time.
-- The active block is highlighted in real-time with an animated glowing accent border.
-- The resolved Root and Scale are automatically broadcast to all diatonic modules.
-
-### 5.3 Progression Presets & File Management
-Progressions can be saved and recalled independently of overall plugin presets:
-- **Preset Dropdown**: Built-in factory progressions (e.g., *Pop 4-Chords*, *Jazz 2-5-1*, *Modal Fusion*, *Epic Cinematic*).
-- **Save / Save As**: Save your custom chord progressions to disk as `.mfprog` XML files.
-- **Load**: Open previously exported progression files from any project.
+1. **X-MOD LISSAJOUS**: Visualizes the internal 2D orbital trajectory between Oscillator 1 ($X$) and Oscillator 2 ($Y$), revealing harmonic ratios, phase locks, and cross-mod deformation.
+2. **PRE-FX LISSAJOUS**: Real-time 2D vector stereo phase scope ($X = \text{Left}, Y = \text{Right}$) of the dry synthesizer engine before the multi-effects rack.
+3. **POST-FX LISSAJOUS**: Real-time 2D vector stereo phase scope after the Multi-FX chain, displaying stereo widening, chorus motion, delay ping-ponging, and reverb diffusion.
 
 ---
 
-## 6. The 16 Processing Modules (Complete Reference)
+## 7. Resonant Filter Section (VCF) & Exact 1V/Oct Key Tracking
+
+CrossMod features a zero-delay Topology-Preserving Transform (TPT) State Variable Filter:
+* **Filter Topologies**: **Lowpass 24dB/oct (4-pole cascade)**, **Lowpass 12dB/oct (2-pole)**, **Bandpass 12dB/oct**, and **Highpass 12dB/oct**.
+* **1V/Oct Key Tracking**: Setting `FILTER KEY TRACK` to `0.50` produces **exact 1V/Oct 12-TET tuning**. When resonance is raised to maximum ($0.99$), the filter self-oscillates as a pure sine-wave synthesizer tracked cleanly across the entire keyboard. Setting tracking to `1.0` doubles the response to 2V/Oct.
+* **Analog Drive**: Soft-saturates the filter core using $C^2$-continuous hyperbolic tangent curves, imparting vintage warmth and harmonic density.
+* **Envelope Amount**: Bipolar modulation ($\pm 5\text{ octaves}$) driven by the dedicated Filter ADSR envelope.
 
 ---
 
-### 6.1 Arpeggiator
-Turns held chords or single notes into expressive rhythmic sequences.
-- **Accent Color**: Orange (`#f97316`)
-- **Category**: Arp / Rhythm
-- **Parameters**:
-  - `Pattern`: **Up**, **Down**, **Up/Down**, **Down/Up**, **Random**, **Chord** (repeating chord stabs), **As Played** (preserves the physical note press order).
-  - `Rate`: Synced note division (**1/4**, **1/8**, **1/16**, **1/32**, including Triplets and Dotted).
-  - `Octaves`: Octave range ($1$ to $4$ octaves).
-  - `Gate`: Note duration percentage ($10\%$ to $150\%$). Values over $100\%$ produce legato overlap.
-  - `Swing`: Shuffle offset ($-50\%$ to $+50\%$).
-  - `Hold`: Key latch toggle. When enabled, the arpeggiator continues cycling through held notes after physical keys are released. Automatically responds to Sustain Pedal (CC 64).
-  - `Hold Mode`: **Standard** (adds notes to active pattern) or **Chord Latch** (replaces old chord with new chord when played).
+## 8. VCA, Warmth Saturation & Stereo Imaging
+
+* **Master Volume**: Overall output amplitude gain ($0.0 - 1.0$).
+* **Master Pan**: Stereo balance adjustment ($-1.0$ hard left to $+1.0$ hard right).
+* **Stereo Width**: Spreads Oscillator 1 to the Left channel and Oscillator 2 to the Right channel ($0\% = \text{true mono mix}, 100\% = \text{full discrete stereo separation}$).
+* **VCA Warmth**: Applies tube/tape-style harmonic saturation to the final voice amplifier stage.
 
 ---
 
-### 6.2 Chord Generator
-Expands single incoming notes into full diatonic or chromatic chords with natural human strumming.
-- **Accent Color**: Rose Red (`#f43f5e`)
-- **Category**: Harmonic
-- **Parameters**:
-  - `Type`: **Diatonic Auto** (intelligently picks major, minor, or diminished chords based on active project scale), **Major**, **Minor**, **Dominant 7**, **Major 7**, **Minor 7**, **Sus2**, **Sus4**, **Diminished**, **9th**, **Power**.
-  - `Inversion`: **Root**, **1st Inversion**, **2nd Inversion**, **3rd Inversion**, or **Random Inversion**.
-  - `Voicing`: **Close**, **Drop-2**, **Drop-3**, **Spread Open**.
-  - `Strum (ms)`: Inter-note delay ($0\text{ ms}$ to $100\text{ ms}$) simulating guitar strums or keyboard rolls.
-  - `Strum Dir`: **Up**, **Down**, **Alternate** (swaps direction every note), **Random**.
-  - `Vel Ramp`: Dynamics slope from first strummed note to last ($-50\%$ to $+50\%$).
-  - `Drop Note`: Probability ($0\%$ to $50\%$) of randomly omitting one note for realistic human variation.
+## 9. Voice Modes (7 Topologies) & Dual Independent Glide
+
+The **VOICE & GLIDE** section unifies voice management into a single dropdown:
+
+1. **Mono**: Pure monophonic mode with high-note priority legato note buffer.
+2. **Mono Unison**: Stacks **8 voices** onto a single note with automatic wide stereo spreading and detuning up to **$\pm 12.0\text{ semitones}$** (1 full octave) via the `VOICE X-MOD` knob.
+3. **Poly (Multi-Mono)**: Standard 16-voice polyphony where each voice operates independently.
+4. **Cyclic Ring**: Daisy-chained closed circular ring modulation loop ($1 \to 2 \to 3 \to \dots \to N \to 1$). Each voice ring-modulates with its neighbor, producing complex metallic bell beating.
+5. **Sympathetic All**: Acoustic soundboard body modeling. Computes the composite vibration of all held keys and feeds resonant formant modulation into all voices, sounding like an acoustic grand piano body.
+6. **Root Driver**: The lowest held pitch acts as master carrier driver, heavily modulating upper harmonic chords ($v_{\text{root}} \times 2.2$), while upper voices feed 2nd-harmonic shimmer back to the root.
+7. **Chaos Diffuse**: Non-linear chaotic phase differential network ($\tanh(2.5 \cdot \Delta v) + 0.35 \cdot \sin(6.28 \cdot v) - 0.2 \cdot v^3$), producing evolving generative textures and analog phase distortion.
+
+* **Dual Independent Glide (Glide 1 & Glide 2)**: Set separate portamento glide times for Oscillator 1 and Oscillator 2 ($0.00\text{ s} - 2.50\text{ s}$). Polyphonic glide works across all poly modes!
 
 ---
 
-### 6.3 Euclidean Rhythm Generator
-Distributes a set number of rhythmic pulses evenly across a chosen step length based on the Euclidean algorithm.
-- **Accent Color**: Amber Gold (`#eab308`)
-- **Category**: Arp / Rhythm
-- **Parameters**:
-  - `Steps`: Pattern length ($1$ to $32$ steps).
-  - `Hits`: Number of active pulses distributed across the step sequence ($0$ to $32$).
-  - `Rotate`: Shifts the starting point of the euclidean pattern clockwise ($0$ to $31$ steps).
-  - `Gate`: Pulse duration ($10\%$ to $100\%$).
-  - `Accent`: Velocity boost applied to the first beat of each cycle ($0\%$ to $100\%$).
+## 10. Audio-Rate LFOs & ADSR Envelopes
+
+### Audio-Rate LFO 1 & LFO 2
+* **Rate Range**: $0.01\text{ Hz}$ (ultra-slow 100-second cycles) to **$2000.0\text{ Hz}$** (audio frequencies).
+* **Waveforms**: **Sine**, **Triangle**, **Saw Up**, **Saw Down**, **Square**, and **Sample & Hold**.
+* **BPM Sync**: Synchronizes to DAW tempo across 15 musical subdivisions (1/32 to 4 Bars including triplets and dotted notes).
+* **Key Retrigger**: Restarts LFO phase on note strike.
+
+### Triple ADSR Envelopes
+* **Amp Envelope**: Dedicated amplitude contour with smooth exponential decay and release.
+* **Filter Envelope**: Cutoff contour with bipolar depth control.
+* **Mod Envelope**: General-purpose modulation envelope routed via the Matrix.
 
 ---
 
-### 6.4 Harmonizer
-Generates parallel diatonic or chromatic harmony lines beneath or above your melody.
-- **Accent Color**: Royal Purple (`#9333ea`)
-- **Category**: Harmonic
-- **Parameters**:
-  - `Voice 1 Interval`: **Off**, **Diatonic 3rd Up**, **Diatonic 3rd Down**, **Diatonic 5th Up**, **Diatonic 6th Up**, **Octave Up**, **Octave Down**, **Chromatic 5th Up (+7 st)**.
-  - `Voice 2 Interval`: Identical options to Voice 1 for rich three-part harmonies.
-  - `Voice 1 Vel`: Relative velocity scale for Voice 1 ($10\%$ to $150\%$).
-  - `Voice 2 Vel`: Relative velocity scale for Voice 2 ($10\%$ to $150\%$).
-  - `Probability`: Chance of generating harmony notes on each event ($0\%$ to $100\%$).
+## 11. 8-Slot Modulation Matrix & Tuned LFO Tracking
+
+Connect any of the **10 modulation sources** to **25 modulation destinations**:
+
+### Modulation Sources:
+`LFO 1`, `LFO 2`, `Amp Env`, `Filter Env`, `Mod Env`, `Random S&H`, `Velocity`, `Mod Wheel (CC 1)`, `Pitch Bend`, `Key Track`.
+
+### Key Matrix Feature: LFO Pitch Tracking as 3rd/4th Oscillators
+* By routing **`Key Track` $\to$ `LFO 1 Rate`** with **`Amount = +0.50`**, the audio-rate LFO tracks the keyboard in **exact 1V/Oct 12-TET tuning**.
+* Route LFO 1 to Filter Cutoff or Pitch to achieve tuned 3-oscillator FM or tuned formant modulation!
 
 ---
 
-### 6.5 MIDI Delay & Echo
-A MIDI-based echo effect that generates successive repeated notes with musical pitch transposition and velocity decay.
-- **Accent Color**: Cyan Blue (`#06b6d4`)
-- **Category**: Arp / Rhythm
-- **Parameters**:
-  - `Time`: Sync rate (**1/4**, **1/8**, **1/16**, **1/32**, Triplets, Dotted).
-  - `Feedback`: Number of echo repeats ($1$ to $16$).
-  - `Vel Decay`: Volume change per repeat. Ranges from $-100\%$ (fading out) to **$+200\%$** (dynamic crescendo swells).
-  - `Pitch Shift`: Semitone transpose applied cumulatively to each successive echo ($-12\text{ st}$ to $+12\text{ st}$).
-  - `Diatonic Lock`: When enabled, transpositions snap to the active scale rather than chromatic steps.
+## 12. Studio Multi-Effects Chain (Order Reconfigurable)
+
+CrossMod includes a three-stage effects processor with **4 selectable routing orders**:
+* `MOD > DLY > RVB` (Classic Studio)
+* `DLY > MOD > RVB` (Ambient Flanger Delay)
+* `MOD > RVB > DLY` (Diffused Delays)
+* `RVB > DLY > MOD` (Shoegaze Reverb Chorus)
+
+### 1. Modulation Effect
+* **Types**: **Chorus** (quadrature stereo delay), **Flanger** (high-feedback comb filter), **Phaser** (6-stage allpass ladder), **Ensemble** (multi-tap lush string machine chorus).
+* **Controls**: `RATE` ($0.05 - 15\text{ Hz}$), `DEPTH`, `FEEDBACK`, `MIX`.
+
+### 2. Delay Effect
+* **Types**: **Tape Delay** (analog tape wow/flutter and pitch-glide inertia), **BBD Analog** (bucket-brigade warm dark roll-off), **Digital Delay** (glitch-free dual-tap crossfade), **Ping-Pong** (alternating stereo bounces).
+* **Controls**: `TIME` ($0.01 - 1.8\text{ s}$ or BPM Sync), `FEEDBACK`, `TONE` (lowpass damping), `MIX`.
+
+### 3. Reverb Effect
+* **Types**: **Plate Reverb** (bright, fast diffusion), **Room Reverb** (warm studio ambience), **Hall Reverb** (deep cinematic space with 40ms pre-delay).
+* **Controls**: `DECAY` ($0.1 - 10.0\text{ s}$), `DAMPING`, `TONE`, `MIX`.
 
 ---
 
-### 6.6 Ratchet / Note Burst
-Triggers rapid note rolls (trap-style hi-hat rolls or IDM synth bursts) on incoming notes.
-- **Accent Color**: Crimson (`#e11d48`)
-- **Category**: Arp / Rhythm
-- **Parameters**:
-  - `Roll Chance`: Probability of triggering a ratchet burst on each incoming note ($0\%$ to $100\%$).
-  - `Repeats`: Number of sub-notes generated (**2x**, **3x**, **4x**, **6x**, **8x**, **Random**).
-  - `Speed`: Rate of burst notes (**1/16**, **1/32**, **1/64**).
-  - `Dynamics`: Velocity slope across the burst ($-50\%$ decrescendo to $+50\%$ crescendo).
+## 13. Preset Management & 11 Factory Presets
+
+CrossMod includes 11 factory presets crafted by **mtyas**:
+1. **`01 - Init Dual Sine`**: Clean benchmark dual sine sound with subtle saturation.
+2. **`02 - Deep Cross Bass`**: Punchy sub-bass with gentle 1->2 cross modulation.
+3. **`03 - Galactic Bell Matrix`**: Shimmering crystalline bells using Phase Modulation.
+4. **`04 - Inter-Voice Shimmer (X-Voice)`**: Sympathetic All polyphonic body resonance.
+5. **`05 - Coupled Harmonic String (X-Voice)`**: Root Driver harmonic physical model.
+6. **`06 - Cybernetic Lead`**: Aggressive Through-Zero FM mono lead.
+7. **`07 - Lush Vintage Brass`**: Rich 8-voice Mono Unison brass stack.
+8. **`08 - Alien Ring Mod Poly (X-Voice)`**: Cyclic Ring polyphonic inter-voice beating.
+9. **`09 - BigBass`**: Heavy, earth-shaking sub-bass reinforced by the 3rd Sub Oscillator.
+10. **`10 - Sick Robot`**: Gritty robotic formant growl with audio-rate LFO filter modulation.
+11. **`11 - Unstable keys`**: Atmospheric generative keys using Chaos Diffuse polyphony.
 
 ---
 
-### 6.7 Humanizer
-Introduces subtle timing imperfections, micro-groove push/pull, and velocity dynamics to eliminate mechanical rigidity.
-- **Accent Color**: Emerald Green (`#10b981`)
-- **Category**: Generative
-- **Parameters**:
-  - `Time Jitter`: Random timing variance ($0\text{ ms}$ to $100\text{ ms}$).
-  - `Push / Pull`: Pocket shift ($-50\text{ ms}$ rushing ahead to $+50\text{ ms}$ dragging behind the beat).
-  - `Vel Jitter`: Velocity randomization amount ($\pm 0$ to $\pm 60$).
-  - `Gate Jitter`: Note duration variance ($0\%$ to $100\%$).
-  - `Groove Feel`: Timing distribution curve (**Natural Gaussian**, **Loose / Drunk**, **Laid-Back**, **Rushing**).
+## 14. MIDI Learn & Hardware Controller Integration
+
+* **Right-Click Any Knob**: Select **"Learn MIDI CC"** from the context popup. Turn any knob or fader on your hardware MIDI keyboard to bind it instantly.
+* **Persistent Storage**: All custom MIDI CC mappings are automatically serialized into `C:\Users\matth\Documents\mtyas\CrossMod\midi_mappings.xml` and restored on startup.
+* **Unmap**: Right-click any mapped parameter and choose **"Clear MIDI Mapping"**.
 
 ---
 
-### 6.8 Scale Quantizer
-Forces incoming arbitrary or out-of-key notes onto the active musical scale.
-- **Accent Color**: Indigo Glow (`#6366f1`)
-- **Category**: Harmonic
-- **Parameters**:
-  - `Strength`: Degree of pitch correction ($0\%$ = chromatic bypass, $100\%$ = strictly locked to scale).
-  - `Direction`: Nearest pitch rounding rule (**Nearest**, **Always Down**, **Always Up**).
-  - `Root Override`: Allows locking the quantizer to a specific root independent of the global sequencer.
-  - `Scale Override`: Allows locking to a specific scale independent of the global sequencer.
+## 15. Sound Design Recipes & Pro Tips
+
+### 🌟 1. Glassy DX7-Style Electric Piano
+* **Osc 1**: Sine Wave, Coarse = 0, Level = 0.8
+* **Osc 2**: Sine Wave, Coarse = +14 st (Octave + Major 2nd), Level = 0.0
+* **Cross-Mod Mode**: **PM (Phase Mod)**, `1 -> 2 Depth` = 0.45
+* **Mod Matrix**: `Velocity` $\to$ `CrossMod 1->2` (Amount = +0.65)
+* **Effects**: Chorus (Rate 0.8 Hz, Mix 35%) + Plate Reverb (Decay 2.5s, Mix 25%)
+
+### 🌟 2. Massive Sub-Bass with Crisp Attack
+* **Osc 1**: Saw Wave, Level = 0.6
+* **Osc 2**: Square Wave, Coarse = 0, Level = 0.4
+* **3rd Sub Osc**: **Sine Wave**, Octave = **-2 Octaves**, Sub Level = 0.9
+* **Filter**: Lowpass 24dB, Cutoff = 350 Hz, Resonance = 0.15, Env Amt = +0.40, Filter Decay = 0.25s
+* **Stereo Width**: 0% (solid mono bass punch)
+
+### 🌟 3. Tuned 3rd Oscillator FM Growl
+* **LFO 1**: Rate = 220 Hz, Shape = Sine
+* **Mod Matrix Slot 0**: `Key Track` $\to$ `LFO 1 Rate` (Amount = +0.50) -> *Now LFO 1 is in perfect 1V/Oct keyboard tune!*
+* **Mod Matrix Slot 1**: `LFO 1` $\to$ `Filter Cutoff` (Amount = +0.60)
+* **Filter**: Cutoff = 600 Hz, Resonance = 0.75, Drive = 0.50
 
 ---
 
-### 6.9 Time Quantizer
-Snaps incoming live keyboard performance notes to a tight rhythmic grid in real-time.
-- **Accent Color**: Blue (`#3b82f6`)
-- **Category**: Arp / Rhythm
-- **Parameters**:
-  - `Grid`: Quantization division (**1/4**, **1/4T**, **1/4D**, **1/8**, **1/8T**, **1/8D**, **1/16**, **1/16T**, **1/16D**, **1/32**, **1/32T**, **1/32D**).
-  - `Strength`: Correction factor ($0\%$ to $100\%$).
-  - `Swing`: Grid shuffle amount ($-50\%$ to $+50\%$).
-  - `Preserve Gate`: Retains original note duration regardless of timing shifts.
+## 16. Complete Parameter & MIDI Specification
+
+| Parameter ID | Name | Range | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `voiceMode` | Voice Mode | 0 to 6 | 2 (Poly) | Mono, Unison, Poly, Cyclic, Symp, Root, Chaos |
+| `glideTime` / `osc1Glide` | Osc 1 Glide | 0.0 to 2.5 s | 0.05 s | Osc 1 Portamento Glide Time |
+| `osc2Glide` | Osc 2 Glide | 0.0 to 2.5 s | 0.05 s | Osc 2 Portamento Glide Time |
+| `voiceCrossMod` | Voice X-Mod | 0.0 to 1.0 | 0.0 | Unison detune or Poly X-Mod depth |
+| `stereoWidth` | Stereo Width | 0.0 to 1.0 | 0.75 | 0% Mono to 100% Discrete Stereo |
+| `crossModMode` | X-Mod Mode | 0 to 4 | 0 (FM) | FM, PM, TZFM, AM, RingMod |
+| `crossMod1to2` | 1 -> 2 Depth | 0.0 to 1.0 | 0.0 | Modulation Osc 1 into Osc 2 |
+| `crossMod2to1` | 2 -> 1 Depth | 0.0 to 1.0 | 0.0 | Modulation Osc 2 into Osc 1 |
+| `subOscWaveform` | Sub Wave | 0 to 3 | 0 (Sine) | Sine, Tri, Saw, Square |
+| `subOscOctave` | Sub Octave | 0 to 1 | 0 (-1 Oct) | -1 Octave or -2 Octaves |
+| `subOscLevel` | Sub Level | 0.0 to 1.0 | 0.0 | Volume of isolated 3rd Sub Osc |
+| `filterCutoff` | Cutoff | 20 to 20000 Hz | 15000 Hz | Filter Cutoff Frequency |
+| `filterResonance` | Resonance | 0.0 to 1.0 | 0.1 | Filter Q / Self-oscillation |
+| `filterKeyTrack` | Key Track | 0.0 to 1.0 | 0.2 (0.5=1V/Oct) | Keyboard Cutoff Tracking |
+| `vcaSaturation` | VCA Warmth | 0.0 to 1.0 | 0.1 | Analog Tube Saturation |
+| `fxRoutingOrder` | FX Order | 0 to 3 | 0 (M-D-R) | Multi-FX stage order |
 
 ---
-
-### 6.10 LFO / CC Modulator
-Generates continuous MIDI Control Change (CC) modulation curves synced to DAW tempo or free-running.
-- **Accent Color**: Sky Blue (`#0ea5e9`)
-- **Category**: Utility
-- **Parameters**:
-  - `Target CC`: Target MIDI CC destination number ($0$ to $127$, e.g., CC 1 Mod Wheel, CC 11 Expression, CC 74 Cutoff).
-  - `Waveform`: **Sine**, **Triangle**, **Saw Up**, **Saw Down**, **Square**, **Sample & Hold (Random)**.
-  - `Rate`: Free rate ($0.1\text{ Hz}$ to $20\text{ Hz}$) or DAW beat-synced division ($8\text{ Bars}$ to $1/32\text{T}$).
-  - `Depth`: Modulation amplitude ($0\%$ to $100\%$).
-  - `Offset`: Center bias value ($0$ to $127$).
-
----
-
-### 6.11 Transform (Invert & Mirror)
-Applies musical geometric transformations to pitch and velocity contours.
-- **Accent Color**: Magenta (`#ec4899`)
-- **Category**: Utility
-- **Parameters**:
-  - `Invert Pitch`: Inverts melody around a selected center pitch axis (higher notes become lower).
-  - `Center Key`: Center axis note ($C0$ to $B8$, default Middle C / $60$).
-  - `Invert Vel`: Flips velocity dynamics ($127 - \text{vel}$). Soft notes become loud; loud accents become ghost notes.
-  - `Vel Compress`: Squeezes dynamic range toward a uniform velocity level ($0\%$ to $100\%$).
-
----
-
-### 6.12 Probability / Gate
-Introduces algorithmic indeterminacy by selectively allowing or dropping notes.
-- **Accent Color**: Violet (`#8b5cf6`)
-- **Category**: Generative
-- **Parameters**:
-  - `Pass Chance`: Probability of an incoming note passing through ($0\%$ to $100\%$).
-  - `Vel Threshold`: Minimum incoming velocity required to be eligible for gating ($1$ to $127$).
-  - `Octave Jump`: Probability ($0\%$ to $100\%$) of an accepted note jumping $\pm 1$ octave.
-  - `Seed / Mode`: **True Random** or **Deterministic Cycle**.
-
----
-
-### 6.13 Transpose
-Shifts incoming notes by semitones and octaves with optional diatonic scale clamping.
-- **Accent Color**: Teal (`#14b8a6`)
-- **Category**: Utility
-- **Parameters**:
-  - `Semitones`: Fine pitch transposition ($-24\text{ st}$ to $+24\text{ st}$).
-  - `Octaves`: Coarse octave transposition ($-3$ to $+3$ octaves).
-  - `Scale Snap`: Forces transposed results back into the active musical scale.
-
----
-
-### 6.14 Mutator
-Generates organic, evolving musical variations by occasionally swapping pitches or introducing interval drift.
-- **Accent Color**: Bright Emerald (`#10b981`)
-- **Category**: Generative
-- **Parameters**:
-  - `Mutation Rate`: Probability of an incoming note mutating ($0\%$ to $100\%$).
-  - `Max Drift`: Maximum interval offset in semitones ($\pm 1$ to $\pm 12\text{ st}$).
-  - `Octave Jump`: Chance of unexpected octave displacement.
-  - `Diatonic Only`: Restricts all pitch mutations strictly to in-scale degrees.
-
----
-
-### 6.15 Filter (Key & Velocity Splitter)
-Restricts notes based on keyboard pitch zones and velocity dynamics, ideal for multi-instrument keyboard splits.
-- **Accent Color**: Slate Gray (`#64748b`)
-- **Category**: Utility
-- **Parameters**:
-  - `Min Key`: Lowest allowed MIDI note ($0$ to $127$).
-  - `Max Key`: Highest allowed MIDI note ($0$ to $127$).
-  - `Min Velocity`: Minimum velocity threshold ($1$ to $127$).
-  - `Max Velocity`: Maximum velocity threshold ($1$ to $127$).
-
----
-
-### 6.16 Mapper / Remapper
-Remaps specific input pitches to new target notes, ideal for custom drum rack conversion or non-standard tunings.
-- **Accent Color**: Orange-Amber (`#f59e0b`)
-- **Category**: Utility
-- **Parameters**:
-  - `Map Mode`: **1-to-1 Pitch**, **Range Clamp**, **Octave Fold**.
-  - `In Root`: Source root note.
-  - `Out Root`: Target destination root note.
-  - `Channel Remap`: Re-routes incoming messages to a dedicated MIDI channel ($1$ to $16$).
-
----
-
-## 7. Virtual Performance Keyboard
-
-MidiFlux features a full-width interactive virtual keyboard along the bottom of the interface:
-
-```
-[ Hide / Show ] [ Hold / Latch: ON/OFF ] [ Octave: C3 - B5 ] [ ◀ Pan Left | Pan Right ▶ ]
-[ ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| | ||| ]
-```
-
-### Features:
-1. **Vertical Velocity Sensitivity**:
-   - Clicking near the **bottom** of a key produces maximum velocity ($127$).
-   - Clicking near the **top** produces soft ghost notes ($\approx 30$).
-2. **Scroll & Pan**:
-   - Right-click and drag anywhere across the keyboard to scroll smoothly between sub-bass ($C-1$) and high treble ($G9$).
-   - Octave reference labels clearly indicate register positions.
-3. **Chord Hold Mode**:
-   - Engaging the **Hold** button allows you to click multiple keys in succession without releasing them, constructing complex chords on-screen that feed directly into the Arpeggiator or Harmonizer.
-4. **Hidable Drawer**:
-   - Click the **Keyboard Toggle** button in the footer to collapse the keyboard when working in compact screen spaces.
-
----
-
-## 8. Preset Management & State Persistence
-
-MidiFlux includes a full preset manager that persists every aspect of your session:
-- **Factory Presets**: Includes crafted production setups (*Cinematic Arp Cascades*, *Lo-Fi Soul Chords*, *Trap Hi-Hat Rolls*, *Evolving Ambient Drone*, *Tight Funk Quantize*).
-- **Editable Presets**: Modify any factory preset or create custom presets. Saving updates the `.mfpreset` XML file directly.
-- **Save / Save As / Delete**: Manage your preset library directly inside the plugin UI.
-- **Full DAW Session Recall**: When saving your DAW project, the entire state (rack arrangement, parameter values, progression timeline, and MIDI CC bindings) is embedded seamlessly.
-
----
-
-## 9. MIDI Learn & Hardware Mapping
-
-Every rotary knob and toggle in MidiFlux supports instant hardware MIDI mapping:
-1. **Engage Learn**: Right-click on any knob or parameter control and select **MIDI Learn**.
-2. **Move Hardware Controller**: Turn the physical knob, fader, or wheel on your MIDI keyboard. MidiFlux immediately detects the incoming CC number and locks the mapping.
-3. **Clear Mapping**: Right-click and choose **Clear MIDI Learn** to disconnect a controller.
-4. **Persistence**: All hardware bindings are saved automatically in your user settings and recalled across project reloads.
-
----
-
-## 10. Under the Hood: Zero-Allocation Real-Time Engine
-
-MidiFlux was engineered to satisfy the rigorous low-latency requirements of professional studio recording and live performance:
-
-- **Zero Audio-Thread Allocations**: All internal MIDI buffers (`mainInputBuffer`, `currentChainBuffer`, `nextBlockBuffer`, and block queues) are pre-sized during `prepareToPlay()`. The audio rendering loop executes without dynamic memory allocations (`malloc` / `new`).
-- **Cached Arpeggiator Note Pools**: Note pool sorting and scale resolution are dirty-flag cached, eliminating CPU overhead during sustained playback.
-- **Lock-Free Telemetry**: The real-time MIDI input/output monitors communicate with the UI thread via lock-free single-producer single-consumer circular buffers.
-- **Priority-Inversion Safety**: Audio-thread lock acquisitions utilize non-blocking `try_to_lock` routines. UI user interactions (such as playing virtual keys or tweaking knobs) can never cause audio dropouts or buffer underruns.
-
----
-
-## 11. Troubleshooting & FAQ
-
-#### Q: The Arpeggiator or Euclidean rhythm is not playing notes.
-**A**: Ensure your DAW transport is playing. Rhythmic modules rely on the host's tempo and PPQ playhead. Check for the `Requires DAW Playhead` notice on the module card.
-
-#### Q: Why are my chords not matching the scale I chose?
-**A**: Check if the **Scale Progression Sequencer** is enabled in the top header. When active, the sequencer overrides the manual header dropdowns to automate scale changes over time.
-
-#### Q: Can I use MidiFlux to control external analog synths?
-**A**: Yes! Route the MIDI output of the MidiFlux track in your DAW to your external hardware MIDI interface. MidiFlux sends standard MIDI Note and CC data.
-
-#### Q: How do I create parallel harmonies while keeping my dry melody?
-**A**: Insert a **Harmonizer** block and click its routing switch from `SER` (Series) to `PAR` (Parallel). It will process the raw input and merge harmonies into the output without altering your original notes.
-
----
-*MidiFlux © 2026 mtyas. Built with JUCE 8. All rights reserved.*
+*Manual compiled for CrossMod Synthesizer Release v1.2.0.*
