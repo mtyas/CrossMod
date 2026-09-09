@@ -178,8 +178,8 @@ cmake --build build --config Release --target CrossModTests
 
 ## 📖 Documentation
 
-- [Full User Manual (`CROSSMOD_MANUAL.md`)](CROSSMOD_MANUAL.md) - Comprehensive technical guide, DSP equations, MIDI CC maps, and sound design tutorials.
-- [Promotional Material (`PROMO_MATERIAL.md`)](PROMO_MATERIAL.md) - Features, specifications, and architecture breakdown.
+- [Full User Manual (`MANUAL.md`)](MANUAL.md) - Comprehensive technical guide, DSP equations, MIDI CC maps, and sound design tutorials.
+- [Promotional Material (`PROMO.md`)](PROMO.md) - Features, specifications, and architecture breakdown.
 
 ---
 
