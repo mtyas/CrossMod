@@ -1,10 +1,11 @@
 # 🎛️ CrossMod: Polyphonic Cross-Modulation Synthesizer
-### Developed by **mtyas** | VST3 • CLAP • Standalone (Windows / macOS / Linux)
+### Developed by **mtyas** | VST3 • CLAP • AU • Standalone (Windows / macOS / Linux)
 
 [![C++20](https://img.shields.io/badge/Language-C%2B%2B20-blue.svg)](https://isocpp.org/)
 [![JUCE 8](https://img.shields.io/badge/Framework-JUCE_8-orange.svg)](https://juce.com/)
 [![Format](https://img.shields.io/badge/Format-VST3_%7C_CLAP_%7C_Standalone-green.svg)](https://github.com/free-audio/clap)
 [![Tests](https://img.shields.io/badge/Tests-18%2F18%20Passing-brightgreen.svg)]()
+[![Latest Release](https://img.shields.io/github/v/release/mtyas/CrossMod?color=brightgreen&label=Release%20v1.2.0)](https://github.com/mtyas/CrossMod/releases/latest)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
 ---
@@ -23,21 +24,35 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
 +----------------------------------------------------------------------------------------------------+
 |  CROSSMOD                       [ PRESET: 04 - Inter-Voice Shimmer ]               [MIDI LEARN]   |
 +----------------------------------------------------------------------------------------------------+
-|  OSC 1 (Left)         |  CROSS-MODULATION       |  OSC 2 (Right)        |  FILTER (VCF)            |
-|  Wave: Saw/Tri/Sq/Sin |  Mode: FM/PM/TZFM/AM/RM |  Wave: Saw/Tri/Sq/Sin |  Type: LP24/LP12/BP/HP   |
-|  Tune: Coarse / Fine  |  Amount: 1 -> 2 / 2 -> 1|  Tune: Coarse / Fine  |  Cutoff / Res / Sat / Env|
-|  Glide: Osc 1 Glide   |  Stereo Width / Sep     |  Glide: Osc 2 Glide   |  KeyTrack: 1V/Oct Tuned  |
-+-----------------------+-------------------------+-----------------------+--------------------------+
-|  3RD SUB OSC (Direct) |  VOICE MODES (7 Algos)  |  LFO 1 & 2 (Audio)    |  STUDIO EFFECTS (FX)     |
-|  Wave: Sin/Tri/Saw/Sq |  Mono / Unison (12-st)  |  0.01 Hz -> 2000 Hz   |  Modulation (Chorus/Flg) |
-|  Octave: -1 / -2 Oct  |  Poly / Cyclic Ring     |  KeyTrack Pitch Tune  |  Delay (Hermite / Tape)  |
-|  Level: Direct Path   |  Sympathetic / Chaos    |  PolyBLEP Anti-Aliased|  Reverb (Hall/Plate/4-Stg)|
-+-----------------------+-------------------------+-----------------------+--------------------------+
-|  CRT LISSAJOUS SCOPE  |  8-SLOT MOD MATRIX      |  ENVELOPES (ADSR)     |  MASTER & OUTPUT         |
-|  Vector Phase Display |  Src -> Dst with Scale  |  Amp Env / Filter Env |  Warmth Saturation       |
-|  Pre-FX / Post-FX Mode|  Zero-Overhead Caching  |  Velocity Sensitivity |  Stereo Pan / Master Vol |
+|  OSC 1 (PolyBLEP)    |  CROSS-MODULATION     |  OSC 2 (PolyBLEP)    |  SUB OSC (Direct Path)       |
+|  - Shape: Saw/Pulse  |  - LinFM / PM / TZFM  |  - Shape: Saw/Pulse  |  - Shape: Sine/Tri/Saw/Pulse |
+|  - Tune: 0 semi      |  - AM / RingMod       |  - Tune: +7 semi     |  - Octave: -1 / -2 Oct       |
+|  - Glide: 15 ms      |  - Bidirectional 1<->2|  - Glide: 0 ms       |  - Level: -6 dB              |
++----------------------+-----------------------+----------------------+------------------------------+
+|  ZERO-DELAY FILTER   |  FILTER ENVELOPE (ADSR)| AMPLIFIER ENV (ADSR)|  CRT VECTORSCOPE             |
+|  - Type: 24dB Ladder |  - Attack: 5 ms       |  - Attack: 1 ms      |  - Mode: Phase Lissajous     |
+|  - Cutoff / Reso     |  - Decay: 250 ms      |  - Decay: 350 ms     |  - Phosphor Glow Trail       |
+|  - 1V/Oct Tracking   |  - Sustain: 40%       |  - Sustain: 80%      |  - 2.8x Analog Boost         |
+|  - C^2 Soft Sat      |  - Release: 400 ms    |  - Release: 300 ms   |  - Real-Time Orbit Trace     |
++----------------------+-----------------------+----------------------+------------------------------+
+|  STUDIO MODULATION   |  STUDIO DELAY (Hermite)| STUDIO REVERB (Plate)| MASTER & VOICING            |
+|  - Chorus / Flanger  |  - Ping-Pong Stereo   |  - 4-Stage Algorith  |  - Poly / Mono / Unison      |
+|  - Pre-FX / Post-FX  |  - Zero-Discontinuity |  - Decay / Damp / Mix|  - 7 Voice Topologies        |
+|  - Rate / Depth / Mix|  - Flutter Modulation |  - Zero-Alloc Buffer |  - Pan / Master Volume       |
 +----------------------------------------------------------------------------------------------------+
 ```
+
+---
+
+## 📦 Downloads & Pre-Built Binaries
+
+Pre-compiled production releases for Windows, macOS, and Linux are available from the [**CrossMod Releases Page**](https://github.com/mtyas/CrossMod/releases/latest):
+
+| OS / Platform | Download Package | Included Formats | Architecture |
+| :--- | :--- | :--- | :--- |
+| **Windows** | [📥 **CrossMod-v1.2.0-Windows.zip**](https://github.com/mtyas/CrossMod/releases/download/v1.2.0/CrossMod-v1.2.0-Windows.zip) | VST3, CLAP, Standalone (`CrossMod.exe`) | x86_64 |
+| **macOS** | [📥 **CrossMod-v1.2.0-macOS-Universal.zip**](https://github.com/mtyas/CrossMod/releases/download/v1.2.0/CrossMod-v1.2.0-macOS-Universal.zip) | VST3, CLAP, AudioUnit (`.component`), Standalone (`CrossMod.app`) | Universal (Apple Silicon & Intel) |
+| **Linux** | [📥 **CrossMod-v1.2.0-Linux-x64.zip**](https://github.com/mtyas/CrossMod/releases/download/v1.2.0/CrossMod-v1.2.0-Linux-x64.zip) | VST3, CLAP, Standalone | x86_64 |
 
 ---
 
@@ -50,7 +65,7 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
 
 ### 2. 5 Cross-Modulation Algorithms
 - **Linear Frequency Modulation (Linear FM)**: Direct linear pitch-rate modulation with symmetrical harmonic sidebands.
-- **Phase Modulation (PM)**: Pure analog phase modulation, delivering bright 80s metallic bells, glassy electric pianos, and modern digital timbers.
+- **Phase Modulation (PM)**: Pure analog phase modulation, delivering bright 80s metallic bells, glassy electric pianos, and modern digital timbres.
 - **Through-Zero FM (TZFM)**: True four-quadrant through-zero frequency modulation. When modulation swings negative, phase cleanly reverses without pitch drift or instability.
 - **Amplitude Modulation (AM)**: Unipolar amplitude scaling creating warm organic sidebands.
 - **Ring Modulation (RM)**: Four-quadrant multiplication ($A \times B$) generating inharmonic bell spectra and sci-fi ring textures.
@@ -73,7 +88,7 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
   - `KeyTrack = 0.5` $\to$ **Exact 1.0 V/Oct** tuning (filter tracks playable MIDI keyboard scale in perfect pitch).
   - `KeyTrack = 1.0` $\to$ **Double tracking (2.0 V/Oct)**.
 
-### 5. Audio-Rate LFOs (0.01 Hz – 2000 Hz) with Key Tracking
+### 5. Audio-Rate LFOs (0.01 Hz - 2000 Hz) with Key Tracking
 - Two versatile LFOs featuring Sine, Triangle, Saw, Square, and Sample & Hold shapes with **PolyBLEP anti-aliasing**.
 - Continuous frequency range from subtle micro-drifts ($0.01\text{ Hz}$) up to screaming audio rates ($2000.0\text{ Hz}$).
 - Host tempo synchronization (1/64 to 32 bars) or free-running.
@@ -116,16 +131,6 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
 
 ---
 
-## 🚀 Built Formats & Binary Locations
-
-| Format | Output Location | Default System Folder |
-| :--- | :--- | :--- |
-| **CLAP Plugin** | `build/CrossMod_artefacts/Release/CLAP/CrossMod.clap` | `C:\Program Files\Common Files\CLAP\` |
-| **VST3 Plugin** | `build/CrossMod_artefacts/Release/VST3/CrossMod.vst3` | `C:\Program Files\Common Files\VST3\` |
-| **Standalone Executable** | `build/CrossMod_artefacts/Release/Standalone/CrossMod.exe` | Portable (any folder) |
-
----
-
 ## 🛠️ Building from Source
 
 ### Prerequisites
@@ -157,7 +162,6 @@ cmake --build build --config Release --target CrossMod_All
 
 #### Linux (GCC / Clang)
 ```bash
-# Install ALSA, JACK, and X11 development headers
 sudo apt-get update && sudo apt-get install -y libasound2-dev libjack-jackd2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl1-mesa-dev
 
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -172,14 +176,14 @@ cmake --build build --config Release --target CrossModTests
 
 ---
 
-## 📚 Documentation
+## 📖 Documentation
 
-- [📖 Full User Manual (`CROSSMOD_MANUAL.md`)](CROSSMOD_MANUAL.md) — Comprehensive technical guide, DSP equations, MIDI CC maps, and sound design tutorials.
-- [📢 Promotional Material (`PROMO_MATERIAL.md`)](PROMO_MATERIAL.md) — Social media blurbs, forum posts, and launch copy.
+- [Full User Manual (`CROSSMOD_MANUAL.md`)](CROSSMOD_MANUAL.md) - Comprehensive technical guide, DSP equations, MIDI CC maps, and sound design tutorials.
+- [Promotional Material (`PROMO_MATERIAL.md`)](PROMO_MATERIAL.md) - Features, specifications, and architecture breakdown.
 
 ---
 
-## 📜 License
+## 📄 License
 
 Copyright © 2026 **mtyas**. All rights reserved.
 Developed with the [JUCE Framework](https://juce.com) and [CLAP Extensions](https://github.com/free-audio/clap).
