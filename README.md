@@ -17,6 +17,8 @@ From lush vintage brass and silky pads to glassy FM bells, cybernetic leads, tea
 
 ## 📸 Overview & Interface
 
+![CrossMod Synthesizer](docs/images/crossmod_screenshot.png)
+
 ```
 +----------------------------------------------------------------------------------------------------+
 |  CROSSMOD                       [ PRESET: 04 - Inter-Voice Shimmer ]               [MIDI LEARN]   |
